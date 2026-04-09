@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "277640581953",
+    "project_id": "persaka-hackathon-dev",
+    "storage_bucket": "persaka-hackathon-dev.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:277640581953:android:bf45e9ccce3bf5bb19c7c0",
+        "android_client_info": {
+          "package_name": "com.example.persaka_hackathon_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBl4i3KuUDZamGILyu5_WCSZLxVfinbcH0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
