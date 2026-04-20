@@ -115,7 +115,63 @@ Do not enable extra Firebase services unless the team actually decides to use th
 Suggested starter setup:
 
 - Auth: enable Email/Password first
+- Auth: enable Email link (passwordless sign-in) if the app will support magic-link login or registration
+- Auth: enable Google sign-in before testing the Google login button in the app
 - Firestore: create the database in production mode or test mode, then tighten rules immediately
+
+If you enable Email link authentication:
+
+- keep the project Hosting/Auth domain in the authorized domains list
+- configure the mobile app link setup in Firebase for Android and iOS
+- note that Firebase Dynamic Links is deprecated, so use the current Firebase Hosting based email-link setup instead
+
+If you enable Google sign-in on Android:
+
+- add both the debug and release SHA-1 and SHA-256 fingerprints for the Android app in Firebase project settings
+- download the refreshed `google-services.json` after adding the SHA fingerprints
+- keep the Google provider enabled in Firebase Authentication
+
+Windows setup flow for Android Google sign-in:
+
+1. From the project root, open PowerShell and run:
+
+```powershell
+cd android
+.\gradlew signingReport
+```
+
+2. In the output, find both the `debug` and `release` variants.
+3. Copy both the `SHA-1` and `SHA-256` values for each variant.
+4. In Firebase Console, open:
+   - Project settings
+   - General
+   - Your apps
+   - Android app: `com.example.persaka_hackathon_app`
+5. Use **Add fingerprint** and add:
+   - debug `SHA-1`
+   - debug `SHA-256`
+   - release `SHA-1`
+   - release `SHA-256`
+6. In Firebase Console, open:
+   - Authentication
+   - Sign-in method
+   - Google
+7. Enable Google sign-in.
+8. Download a fresh `google-services.json` from Firebase Console and replace:
+
+```text
+android/app/google-services.json
+```
+
+9. Rebuild the app after replacing the config file:
+
+```bash
+flutter clean
+flutter pub get
+flutter run
+```
+
+If Android Google sign-in throws a developer error or `ApiException: 10`, the SHA fingerprints or outdated `google-services.json` file are usually the cause.
 
 ## 5. Connect Flutter to Firebase
 

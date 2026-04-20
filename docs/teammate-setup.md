@@ -167,6 +167,34 @@ If the app fails because Firebase is not configured yet, check with the project 
 - the correct Firebase project access has been granted
 - Auth and Firestore have been enabled in Firebase Console
 
+If Android Google sign-in does not work on your machine, do this on Windows:
+
+```powershell
+cd android
+.\gradlew signingReport
+```
+
+Then:
+
+1. Copy the `SHA-1` and `SHA-256` values from the `debug` and `release` variants.
+2. Ask the project owner to confirm those fingerprints are added to the Android app in Firebase Console for `com.example.persaka_hackathon_app`, or add them yourself if the team expects you to manage Firebase setup.
+3. Make sure Google sign-in is enabled in Firebase Console under Authentication → Sign-in method → Google.
+4. Download the refreshed Firebase Android config and replace:
+
+```text
+android/app/google-services.json
+```
+
+5. Rebuild the app:
+
+```bash
+flutter clean
+flutter pub get
+flutter run
+```
+
+If you see a Google sign-in developer error or `ApiException: 10`, it usually means the SHA fingerprints or `google-services.json` file are out of date.
+
 ## 7. Local Storage Reminder
 
 This project does not use Firebase Storage.

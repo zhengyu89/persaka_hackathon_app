@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import 'firebase_options.dart';
+import 'routes/app_routes.dart';
+import 'auth_wrapper.dart';
 
 // void main() {
 //   runApp(const MyApp());
@@ -21,7 +23,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Hackathon OS',
+
       theme: ThemeData(
         // This is the theme of your application.
         //
@@ -39,12 +42,42 @@ class MyApp extends StatelessWidget {
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+
+      debugShowCheckedModeBanner: false,
+
+      // 🔥 Navigation routes for the app
+      routes: AppRoutes.routes,
+
+      // 🔥 This replaces MyHomePage (handles login session automatically)
+      home: AuthWrapper(),
     );
   }
 }
 
+/*
+  ============================
+  REMOVED DEFAULT DEMO CODE
+  ============================
+
+  The following MyHomePage counter app was removed because:
+  - It is only a Flutter demo
+  - It is not part of your Hackathon OS system
+  - Your app now uses AuthWrapper + Firebase authentication flow
+
+  Original behavior:
+  - Displayed a counter
+  - Used setState to update UI
+  - Had a floating action button
+
+  Your app now:
+  - Uses Firebase Authentication
+  - Has Login / Register / Verification screens
+  - Uses proper navigation and session handling
+*/
+
+/*
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
@@ -130,6 +163,4 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
-
-
-
+*/
