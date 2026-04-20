@@ -29,8 +29,6 @@ class PasswordRecoveryService {
     switch (code) {
       case 'invalid-email':
         return 'Enter a valid email address.';
-      case 'user-not-found':
-        return 'No account was found for that email.';
       case 'too-many-requests':
         return 'Too many attempts right now. Please try again later.';
       case 'network-request-failed':

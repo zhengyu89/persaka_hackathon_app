@@ -27,6 +27,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   String error = '';
   bool isLoading = false;
+  bool isGoogleLoading = false;
 
   Future<void> register() async {
     if (emailController.text.isEmpty || passwordController.text.isEmpty) {
@@ -91,6 +92,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => isLoading = false);
   }
 
+  Future<void> registerWithGoogle() async {
+    if (isGoogleLoading) {
+      return;
+    }
+
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    setState(() {
+      isGoogleLoading = true;
+      error = '';
+    });
+
+    try {
+      final user = await auth.signInWithGoogle();
+
+      if (!mounted) return;
+
+      if (user != null) {
+        navigator.pushReplacementNamed(AppRoutes.home);
+      } else {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Google sign-in cancelled')),
+        );
+      }
+    } on GoogleSignInAuthException catch (googleError) {
+      if (!mounted) return;
+      setState(() => error = googleError.message);
+    } finally {
+      if (mounted) {
+        setState(() => isGoogleLoading = false);
+      }
+    }
+  }
+
   // ✅ OR Divider
   Widget buildOrDivider() {
     return Row(
@@ -100,10 +136,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           padding: EdgeInsets.symmetric(horizontal: 12),
           child: Text(
             'OR',
-            style: TextStyle(
-              color: Color(0xFF6A7282),
-              fontSize: 12,
-            ),
+            style: TextStyle(color: Color(0xFF6A7282), fontSize: 12),
           ),
         ),
         Expanded(child: Divider(color: Color(0xFFE5E7EB))),
@@ -189,11 +222,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         child: const Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Password must contain:', style: TextStyle(fontSize: 12)),
+                            Text(
+                              'Password must contain:',
+                              style: TextStyle(fontSize: 12),
+                            ),
                             SizedBox(height: 6),
-                            Text('At least 8 characters', style: TextStyle(fontSize: 12)),
-                            Text('Uppercase and lowercase letters', style: TextStyle(fontSize: 12)),
-                            Text('At least one number', style: TextStyle(fontSize: 12)),
+                            Text(
+                              'At least 8 characters',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            Text(
+                              'Uppercase and lowercase letters',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                            Text(
+                              'At least one number',
+                              style: TextStyle(fontSize: 12),
+                            ),
                           ],
                         ),
                       ),
@@ -212,20 +257,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           height: 55,
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFF4F39F6),
-                                Color(0xFF9810FA),
-                              ],
+                              colors: [Color(0xFF4F39F6), Color(0xFF9810FA)],
                             ),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Center(
-                            child: isLoading
-                                ? const CircularProgressIndicator(color: Colors.white)
-                                : const Text(
-                                    'Create Account',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
+                            child:
+                                isLoading
+                                    ? const CircularProgressIndicator(
+                                      color: Colors.white,
+                                    )
+                                    : const Text(
+                                      'Create Account',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
                           ),
                         ),
                       ),
@@ -238,19 +283,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 20),
 
                       GoogleSignInButton(
-                        onTap: () async {
-                          final user = await auth.signInWithGoogle();
-
-                          if (!mounted) return;
-
-                          if (user != null) {
-                            Navigator.pushReplacementNamed(context, AppRoutes.home);
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Google sign-in cancelled')),
-                            );
-                          }
-                        },
+                        onTap: registerWithGoogle,
+                        isLoading: isGoogleLoading,
                       ),
 
                       const SizedBox(height: 16),

@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'package:flutter/material.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/services/email_verification_service.dart';
 import '../../../../core/services/auth_service.dart';
+import '../../../auth/password_recovery/screens/forgot_password_screen.dart';
 import '../../../../routes/app_routes.dart';
 import '../../../../shared/widgets/app_input_field.dart';
 import '../../../../shared/widgets/auth_header.dart';
@@ -23,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final auth = AuthService();
   final verify = EmailVerificationService();
+  bool isGoogleLoading = false;
 
   String error = '';
   bool isLoading = false;
@@ -87,6 +88,41 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => isLoading = false);
   }
 
+  Future<void> loginWithGoogle() async {
+    if (isGoogleLoading) {
+      return;
+    }
+
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    setState(() {
+      isGoogleLoading = true;
+      error = '';
+    });
+
+    try {
+      final user = await auth.signInWithGoogle();
+
+      if (!mounted) return;
+
+      if (user != null) {
+        navigator.pushReplacementNamed(AppRoutes.home);
+      } else {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Google sign-in cancelled')),
+        );
+      }
+    } on GoogleSignInAuthException catch (googleError) {
+      if (!mounted) return;
+      setState(() => error = googleError.message);
+    } finally {
+      if (mounted) {
+        setState(() => isGoogleLoading = false);
+      }
+    }
+  }
+
   // ✅ OR Divider
   Widget buildOrDivider() {
     return Row(
@@ -96,10 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
           padding: EdgeInsets.symmetric(horizontal: 12),
           child: Text(
             'OR',
-            style: TextStyle(
-              color: Color(0xFF6A7282),
-              fontSize: 12,
-            ),
+            style: TextStyle(color: Color(0xFF6A7282), fontSize: 12),
           ),
         ),
         Expanded(child: Divider(color: Color(0xFFE5E7EB))),
@@ -175,20 +208,20 @@ class _LoginScreenState extends State<LoginScreen> {
                           height: 55,
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFF4F39F6),
-                                Color(0xFF9810FA),
-                              ],
+                              colors: [Color(0xFF4F39F6), Color(0xFF9810FA)],
                             ),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Center(
-                            child: isLoading
-                                ? const CircularProgressIndicator(color: Colors.white)
-                                : const Text(
-                                    'Login',
-                                    style: TextStyle(color: Colors.white),
-                                  ),
+                            child:
+                                isLoading
+                                    ? const CircularProgressIndicator(
+                                      color: Colors.white,
+                                    )
+                                    : const Text(
+                                      'Login',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
                           ),
                         ),
                       ),
@@ -201,22 +234,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 20),
 
                       GoogleSignInButton(
-                        onTap: () async {
-                          final user = await auth.signInWithGoogle();
-
-                          if (!mounted) return;
-
-                          if (user != null) {
-                            Navigator.pushReplacementNamed(
-                                context, AppRoutes.home);
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Google sign-in cancelled'),
-                              ),
-                            );
-                          }
-                        },
+                        onTap: loginWithGoogle,
+                        isLoading: isGoogleLoading,
                       ),
 
                       const SizedBox(height: 16),
@@ -232,30 +251,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       TextButton(
                         onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Feature coming soon'),
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => ForgotPasswordScreen(
+                                    initialEmail: emailController.text.trim(),
+                                  ),
                             ),
                           );
                         },
                         child: const Text('Forgot Password?'),
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      const Divider(),
-
-                      const SizedBox(height: 10),
-
-                      TextButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Feature coming soon'),
-                            ),
-                          );
-                        },
-                        child: const Text('Login with Email Link'),
                       ),
                     ],
                   ),

@@ -16,6 +16,7 @@ class EmailVerificationScreen extends StatefulWidget {
 class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   int countdown = 60;
   Timer? timer;
+  bool _isCheckingVerification = false;
 
   @override
   void initState() {
@@ -41,6 +42,12 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   }
 
   Future<void> checkVerification() async {
+    if (_isCheckingVerification) {
+      return;
+    }
+
+    setState(() => _isCheckingVerification = true);
+
     await FirebaseAuth.instance.currentUser?.reload();
 
     final user = FirebaseAuth.instance.currentUser;
@@ -50,7 +57,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
         return;
       }
 
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
     } else {
       if (!mounted) {
         return;
@@ -59,6 +66,10 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Email not verified yet')),
       );
+    }
+
+    if (mounted) {
+      setState(() => _isCheckingVerification = false);
     }
   }
 
@@ -128,6 +139,20 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                 ),
                 child: Column(
                   children: [
+                    Container(
+                      width: 76,
+                      height: 76,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F0FF),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: const Icon(
+                        Icons.outgoing_mail_rounded,
+                        size: 36,
+                        color: Color(0xFF5B3DF5),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
                     const Text(
                       'Check Your Inbox',
                       style: TextStyle(
@@ -141,11 +166,23 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 10),
-                    Text(
-                      email,
-                      style: const TextStyle(
-                        color: Color(0xFF4F39F6),
-                        fontWeight: FontWeight.w500,
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F3FF),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        email,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFF4F39F6),
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -155,38 +192,88 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const SizedBox(height: 30),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4F39F6),
-                        minimumSize: const Size(double.infinity, 50),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4F39F6),
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: const Color(0xFF4F39F6),
+                          disabledForegroundColor: Colors.white70,
+                          minimumSize: const Size.fromHeight(50),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        onPressed: _isCheckingVerification ? null : checkVerification,
+                        child:
+                            _isCheckingVerification
+                                ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                                : const Text("I've Verified My Email"),
                       ),
-                      onPressed: checkVerification,
-                      child: const Text("I've Verified My Email"),
                     ),
                     const SizedBox(height: 12),
-                    OutlinedButton(
-                      onPressed: countdown == 0 ? resendEmail : null,
-                      child: Text(
-                        countdown == 0
-                            ? 'Resend Email'
-                            : 'Resend in ${countdown}s',
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(50),
+                          side: const BorderSide(color: Color(0xFFD9D6FE)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          foregroundColor: const Color(0xFF4F39F6),
+                        ),
+                        onPressed: countdown == 0 ? resendEmail : null,
+                        child: Text(
+                          countdown == 0
+                              ? 'Resend Email'
+                              : 'Resend in ${countdown}s',
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF),
-                        borderRadius: BorderRadius.circular(16),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFF3F0FF), Color(0xFFF8F5FF)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(18),
                       ),
                       child: const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("Can't find the email?"),
+                          Text(
+                            "Can't find the email?",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1F2937),
+                            ),
+                          ),
                           SizedBox(height: 6),
-                          Text('Check spam folder'),
-                          Text('Check your email address'),
-                          Text('Wait a few minutes'),
+                          Text(
+                            'Check your spam or promotions folder.',
+                            style: TextStyle(color: Color(0xFF6B7280)),
+                          ),
+                          Text(
+                            'Make sure your email address is correct.',
+                            style: TextStyle(color: Color(0xFF6B7280)),
+                          ),
+                          Text(
+                            'Wait a minute and try resending if needed.',
+                            style: TextStyle(color: Color(0xFF6B7280)),
+                          ),
                         ],
                       ),
                     ),
