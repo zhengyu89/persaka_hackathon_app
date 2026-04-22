@@ -147,7 +147,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                         borderRadius: BorderRadius.circular(24),
                       ),
                       child: const Icon(
-                        Icons.outgoing_mail_rounded,
+                        Icons.mark_email_unread_rounded,
                         size: 36,
                         color: Color(0xFF5B3DF5),
                       ),
