@@ -50,20 +50,11 @@ class AuthHeader extends StatelessWidget {
 
             if (showBack) const SizedBox(height: 20),
 
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 28,
-                  color: Colors.white, // ✅ small improvement
-                ),
-              ),
-            ),
+            Image.asset(
+            'assets/images/hackathon.png',
+            width: 150,
+            height: 150,
+          ),
 
             const SizedBox(height: 20),
 
