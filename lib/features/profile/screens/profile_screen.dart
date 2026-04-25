@@ -35,6 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadProfile() async {
     final data = await _authService.getUserProfile();
     final user = FirebaseAuth.instance.currentUser;
+    if (!mounted) return;
     setState(() {
       _email = user?.email ?? '';
       _nameController.text = data?['displayName'] ?? user?.displayName ?? '';
@@ -66,6 +67,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         displayName: _nameController.text.trim(),
         phoneNumber: _phoneController.text.trim(),
       );
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -74,6 +76,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
@@ -81,7 +84,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
     } finally {
-      setState(() => _isSaving = false);
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
     }
   }
 
