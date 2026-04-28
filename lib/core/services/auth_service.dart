@@ -1,10 +1,20 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  AuthService({
+    FirebaseAuth? auth,
+    GoogleSignIn? googleSignIn,
+    FirebaseFirestore? firestore,
+  }) : _auth = auth ?? FirebaseAuth.instance,
+       _googleSignIn = googleSignIn ?? GoogleSignIn(),
+       _firestore = firestore ?? FirebaseFirestore.instance;
+
+  final FirebaseAuth _auth;
+  final GoogleSignIn _googleSignIn;
+  final FirebaseFirestore _firestore;
 
   // =========================
   // 🔐 EMAIL AUTH
@@ -28,7 +38,7 @@ class AuthService {
 
   Future<void> logout() async {
     await _auth.signOut();
-    await _googleSignIn.signOut(); // also sign out google
+    await _googleSignIn.signOut();
   }
 
   // =========================
@@ -38,19 +48,13 @@ class AuthService {
   Future<User?> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-
       if (googleUser == null) return null;
-
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-
       final userCredential = await _auth.signInWithCredential(credential);
-
       return userCredential.user;
     } on FirebaseAuthException catch (error) {
       throw GoogleSignInAuthException(_mapFirebaseGoogleMessage(error.code));
@@ -83,21 +87,17 @@ class AuthService {
   String _mapPlatformGoogleMessage(PlatformException error) {
     final String code = error.code.toLowerCase();
     final String message = (error.message ?? '').toLowerCase();
-
     if (code.contains('network') || message.contains('network')) {
       return 'Check your internet connection and try Google sign-in again.';
     }
-
     if (code.contains('sign_in_canceled') || code.contains('canceled')) {
       return 'Google sign-in was cancelled.';
     }
-
     if (message.contains('apiexception: 10') ||
         message.contains('developer error') ||
         code.contains('sign_in_failed')) {
-      return 'Google sign-in is not configured for this Android build yet. Add the app SHA-1 and SHA-256 in Firebase, then download the updated google-services.json.';
+      return 'Google sign-in is not configured for this Android build yet.';
     }
-
     return 'Google sign-in could not be completed right now.';
   }
 
@@ -106,15 +106,49 @@ class AuthService {
   // =========================
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
-
   User? get currentUser => _auth.currentUser;
+
+  // =========================
+  // 👤 PROFILE UPDATE
+  // =========================
+
+  Future<void> updateProfile({
+    required String displayName,
+    required String phoneNumber,
+    String? photoURL,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    await user.updateDisplayName(displayName);
+
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .set({
+          'displayName': displayName,
+          'phoneNumber': phoneNumber,
+          'email': user.email,
+          if (photoURL != null) 'photoURL': photoURL,
+        }, SetOptions(merge: true));
+  }
+
+  Future<Map<String, dynamic>?> getUserProfile() async {
+    final user = _auth.currentUser;
+    if (user == null) return null;
+
+    final doc = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    return doc.data();
+  }
 }
 
 class GoogleSignInAuthException implements Exception {
   const GoogleSignInAuthException(this.message);
-
   final String message;
-
   @override
   String toString() => message;
 }
