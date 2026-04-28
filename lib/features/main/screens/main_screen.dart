@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../board/screens/board_screen.dart';
 import '../../home/screens/home_screen.dart';
+import '../../submit/screens/submit_screen.dart';
+import '../../team/screens/team_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
@@ -14,10 +17,10 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _pages = [
     const HomeScreen(),
-    const Center(child: Text("Team")),
-    const Center(child: Text("Submit")),
-    const Center(child: Text("Leaderboard")),
-    ProfileScreen(),
+    const TeamScreen(),
+    const SubmitScreen(),
+    const BoardScreen(),
+    const ProfileScreen(),
   ];
 
   void _onTap(int index) {
@@ -38,7 +41,8 @@ class _MainScreenState extends State<MainScreen> {
         currentIndex: _currentIndex,
         onTap: _onTap,
         selectedItemColor: const Color(0xFF4F39F6),
-        unselectedItemColor: Colors.grey,
+        unselectedItemColor: const Color(0xFF6B7280),
+        backgroundColor: Colors.white,
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),

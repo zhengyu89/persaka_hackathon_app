@@ -1,77 +1,100 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../../../shared/widgets/participant_ui.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+    return ParticipantPageScaffold(
+      title: 'Participant Home',
+      subtitle:
+          'Track your team, schedule, and judging progress from one clean dashboard.',
+      icon: Icons.home_rounded,
+      trailing: const _HeaderBadge(),
+      children: const [
+        _HeroOverviewCard(),
+        _ActionStrip(),
+        _ScheduleCard(),
+        _AnnouncementsCard(),
+        _LeaderboardPreviewCard(),
+      ],
+    );
+  }
+}
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFF),
+class _HeaderBadge extends StatelessWidget {
+  const _HeaderBadge();
 
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _header(user),
-            const SizedBox(height: 16),
-            _quickActions(),
-            const SizedBox(height: 20),
-            _nextEvent(),
-            const SizedBox(height: 20),
-            _updates(),
-            const SizedBox(height: 20),
-            _topTeams(),
-            const SizedBox(height: 20),
-            _stats(),
-            const SizedBox(height: 100),
-          ],
-        ),
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.16),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Role',
+            style: TextStyle(color: Color(0xFFEAE7FF), fontSize: 12),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Participant',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }
+}
 
-  // 🔥 HEADER
-  Widget _header(User? user) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 60, 16, 24),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Color(0xFF4F39F6),
-            Color(0xFF9810FA),
-            Color(0xFF432DD7),
-          ],
-        ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
-      ),
+class _HeroOverviewCard extends StatelessWidget {
+  const _HeroOverviewCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return ParticipantCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Welcome back 👋",
-              style: TextStyle(color: Colors.white70)),
-          const SizedBox(height: 6),
-          const Text(
-            "Spring Hack 2026",
-            style: TextStyle(
-                fontSize: 24,
-                color: Colors.white,
-                fontWeight: FontWeight.w600),
+          const ParticipantSectionHeader(
+            title: 'Spring Hack 2026',
+            subtitle: 'Everything your team needs before the final pitch.',
           ),
-          const SizedBox(height: 16),
+          Row(
+            children: const [
+              ParticipantInfoChip(
+                label: 'Team Nova',
+                color: ParticipantPalette.primary,
+              ),
+              SizedBox(width: 8),
+              ParticipantInfoChip(
+                label: 'Checkpoint at 4:30 PM',
+                color: ParticipantPalette.warning,
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(14),
+              gradient: ParticipantPalette.headerGradient,
+              borderRadius: BorderRadius.circular(22),
             ),
             child: const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Participant", style: TextStyle(color: Colors.white)),
-                Text("Team Alpha (4)",
-                    style: TextStyle(color: Colors.white70)),
+                ParticipantMetricTile(label: 'Hours Left', value: '18'),
+                SizedBox(width: 10),
+                ParticipantMetricTile(label: 'Team Tasks', value: '07'),
+                SizedBox(width: 10),
+                ParticipantMetricTile(label: 'Score Rank', value: '#04'),
               ],
             ),
           ),
@@ -79,128 +102,94 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  // ⚡ QUICK ACTIONS
-  Widget _quickActions() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Expanded(
-              child:
-                  _actionCard("Submit Project", "Upload work", Colors.blue)),
-          const SizedBox(width: 10),
-          Expanded(
-              child:
-                  _actionCard("Schedule", "View timeline", Colors.purple)),
-        ],
-      ),
-    );
-  }
+class _ActionStrip extends StatelessWidget {
+  const _ActionStrip();
 
-  Widget _actionCard(String title, String subtitle, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      height: 120,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color, color.withOpacity(0.7)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
+  @override
+  Widget build(BuildContext context) {
+    return const ParticipantCard(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.flash_on, color: Colors.white),
-          const Spacer(),
-          Text(title, style: const TextStyle(color: Colors.white)),
-          Text(subtitle,
-              style: const TextStyle(color: Colors.white70, fontSize: 12)),
-        ],
-      ),
-    );
-  }
-
-  Widget _nextEvent() {
-    return const _sectionCard(
-      title: "Opening Ceremony",
-      subtitle: "10:00 AM - 11:00 AM",
-      tag: "Live Now",
-    );
-  }
-
-  Widget _updates() {
-    return Column(
-      children: const [
-        _sectionCard(
-          title: "Submission Deadline Extended",
-          subtitle: "Now until 6:00 PM",
-          tag: "Important",
-        ),
-        _sectionCard(
-          title: "Lunch is Ready!",
-          subtitle: "Cafeteria",
-          tag: "Info",
-        ),
-      ],
-    );
-  }
-
-  Widget _topTeams() {
-    return Column(
-      children: const [
-        ListTile(title: Text("🥇 Code Ninjas"), trailing: Text("95 pts")),
-        ListTile(title: Text("🥈 Tech Titans"), trailing: Text("92 pts")),
-        ListTile(title: Text("🥉 Innovation Hub"), trailing: Text("88 pts")),
-      ],
-    );
-  }
-
-  Widget _stats() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: const [
-          Expanded(child: _statCard("36", "Hours Left")),
-          SizedBox(width: 10),
-          Expanded(child: _statCard("24", "Teams")),
-          SizedBox(width: 10),
-          Expanded(child: _statCard("8", "Events")),
+          ParticipantSectionHeader(
+            title: 'Quick Actions',
+            subtitle: 'Static UI for now. Wire these buttons later.',
+          ),
+          Row(
+            children: [
+              _ActionTile(
+                icon: Icons.upload_file_rounded,
+                title: 'Submit deck',
+                subtitle: 'Pitch and repo links',
+                color: ParticipantPalette.primary,
+              ),
+              SizedBox(width: 12),
+              _ActionTile(
+                icon: Icons.groups_2_rounded,
+                title: 'View team',
+                subtitle: 'Roles and progress',
+                color: ParticipantPalette.secondary,
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 }
 
-// 🔁 REUSABLE CARD
-class _sectionCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final String tag;
-
-  const _sectionCard({
+class _ActionTile extends StatelessWidget {
+  const _ActionTile({
+    required this.icon,
     required this.title,
     required this.subtitle,
-    required this.tag,
+    required this.color,
   });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
+    return Expanded(
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(tag, style: const TextStyle(fontSize: 12)),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: Colors.white),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              title,
+              style: const TextStyle(
+                color: ParticipantPalette.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 6),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text(subtitle, style: const TextStyle(color: Colors.grey)),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                color: ParticipantPalette.textSecondary,
+                fontSize: 12,
+                height: 1.45,
+              ),
+            ),
           ],
         ),
       ),
@@ -208,29 +197,134 @@ class _sectionCard extends StatelessWidget {
   }
 }
 
-// 🔁 STAT CARD
-class _statCard extends StatelessWidget {
-  final String value;
-  final String label;
-
-  const _statCard(this.value, this.label);
+class _ScheduleCard extends StatelessWidget {
+  const _ScheduleCard();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 80,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+    return const ParticipantCard(
+      child: Column(
+        children: [
+          ParticipantSectionHeader(
+            title: 'Today\'s Schedule',
+            subtitle: 'Figma-inspired timeline blocks for participant flow.',
+          ),
+          ParticipantTimelineTile(
+            time: '09:00',
+            title: 'Mentor Office Hours',
+            subtitle: 'Problem validation with product and technical mentors.',
+            dotColor: ParticipantPalette.primary,
+          ),
+          ParticipantTimelineTile(
+            time: '13:30',
+            title: 'Midpoint Review',
+            subtitle: 'Share progress, blockers, and demo direction.',
+            dotColor: ParticipantPalette.warning,
+          ),
+          ParticipantTimelineTile(
+            time: '18:00',
+            title: 'Submission Lock',
+            subtitle: 'Final repository, slides, and demo video due.',
+            dotColor: ParticipantPalette.danger,
+          ),
+        ],
       ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(value, style: const TextStyle(fontSize: 20)),
-            Text(label, style: const TextStyle(fontSize: 12)),
-          ],
-        ),
+    );
+  }
+}
+
+class _AnnouncementsCard extends StatelessWidget {
+  const _AnnouncementsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ParticipantCard(
+      child: Column(
+        children: [
+          ParticipantSectionHeader(
+            title: 'Event Updates',
+            subtitle: 'Mock announcements section ready for backend data.',
+          ),
+          ParticipantBulletRow(
+            text: 'Judging rubric published with extra weight on usability and impact.',
+            icon: Icons.campaign_rounded,
+            color: ParticipantPalette.primary,
+          ),
+          ParticipantBulletRow(
+            text: 'Design clinic reopened from 2:00 PM to 4:00 PM in Workshop Room B.',
+            icon: Icons.design_services_rounded,
+            color: ParticipantPalette.secondary,
+          ),
+          ParticipantBulletRow(
+            text: 'API sandbox quota was increased for all participant teams.',
+            icon: Icons.rocket_launch_rounded,
+            color: ParticipantPalette.success,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LeaderboardPreviewCard extends StatelessWidget {
+  const _LeaderboardPreviewCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return ParticipantCard(
+      child: Column(
+        children: [
+          const ParticipantSectionHeader(
+            title: 'Top Teams Snapshot',
+            subtitle: 'A lightweight preview before users open the full board.',
+          ),
+          _rankingRow(1, 'ByteForce', '91 pts'),
+          _rankingRow(2, 'Team Nova', '88 pts'),
+          _rankingRow(3, 'Pixel Pulse', '84 pts'),
+        ],
+      ),
+    );
+  }
+
+  Widget _rankingRow(int rank, String team, String score) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: ParticipantPalette.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '$rank',
+              style: const TextStyle(
+                color: ParticipantPalette.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              team,
+              style: const TextStyle(
+                color: ParticipantPalette.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Text(
+            score,
+            style: const TextStyle(
+              color: ParticipantPalette.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
