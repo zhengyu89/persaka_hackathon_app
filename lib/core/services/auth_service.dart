@@ -53,6 +53,7 @@ class AuthService {
       'danishekhsan@gmail.com', // Aiman (testing for admin role)
       'admin2@gmail.com',
       'admin3@gmail.com',
+      'h58176801@gmail.com', // Aidil
     ];
 
     if (adminEmails.contains(user.email)) {
