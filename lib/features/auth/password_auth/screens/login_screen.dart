@@ -56,7 +56,17 @@ class _LoginScreenState extends State<LoginScreen> {
         if (!mounted) return;
 
         if (isVerified) {
-          Navigator.pushReplacementNamed(context, AppRoutes.home);
+          final role = await auth.getUserRole(user);
+
+          if (!mounted) return;
+
+          if (role == 'admin') {
+            Navigator.pushReplacementNamed(context, AppRoutes.admin);
+          } else if (role == 'judge') {
+            Navigator.pushReplacementNamed(context, AppRoutes.judge);
+          } else {
+            Navigator.pushReplacementNamed(context, AppRoutes.participant);
+          }
         } else {
           Navigator.pushReplacementNamed(context, AppRoutes.verify);
         }
@@ -107,7 +117,15 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       if (user != null) {
-        navigator.pushReplacementNamed(AppRoutes.home);
+        final role = await auth.getUserRole(user);
+
+        if (role == 'admin') {
+          navigator.pushReplacementNamed(AppRoutes.admin);
+        } else if (role == 'judge') {
+          navigator.pushReplacementNamed(AppRoutes.judge);
+        } else {
+          navigator.pushReplacementNamed(AppRoutes.participant);
+        }
       } else {
         messenger.showSnackBar(
           const SnackBar(content: Text('Google sign-in cancelled')),
