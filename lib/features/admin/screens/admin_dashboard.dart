@@ -6,6 +6,7 @@ import '../../home/screens/home_screen.dart';
 import '../../submit/screens/submit_screen.dart';
 import '../../team/screens/team_screen.dart';
 import '../../profile/screens/profile_screen.dart';
+import '../../admin/screens/admin_manage_judges_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -407,60 +408,74 @@ class AdminDashboardScreen extends StatelessWidget {
                   const SizedBox(height: 24),
 
                   /// QUICK ACTIONS
-                  sectionTitle("Quick Actions"),
+sectionTitle("Quick Actions"),
 
-                  const SizedBox(height: 16),
+const SizedBox(height: 16),
 
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics:
-                        const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: 14,
-                    mainAxisSpacing: 14,
-                    childAspectRatio: 1.08,
+GridView.count(
+  crossAxisCount: 2,
+  shrinkWrap: true,
+  physics:
+      const NeverScrollableScrollPhysics(),
+  crossAxisSpacing: 14,
+  mainAxisSpacing: 14,
+  childAspectRatio: 1.08,
 
-                    children: const [
+  children: [
 
-                      ActionCard(
-                        title: "Create\nAnnouncement",
-                        icon: Icons.notifications_none,
-                        gradient: [
-                          Color(0xFF4F46E5),
-                          Color(0xFF6366F1),
-                        ],
-                      ),
+    const ActionCard(
+      title: "Create\nAnnouncement",
+      icon: Icons.notifications_none,
+      gradient: [
+        Color(0xFF4F46E5),
+        Color(0xFF6366F1),
+      ],
+    ),
 
-                      ActionCard(
-                        title: "Manage Teams",
-                        icon: Icons.groups_rounded,
-                        gradient: [
-                          Color(0xFFA21CAF),
-                          Color(0xFFD946EF),
-                        ],
-                      ),
+    GestureDetector(
+      onTap: () {
 
-                      ActionCard(
-                        title: "View Submissions",
-                        icon:
-                            Icons.description_outlined,
-                        gradient: [
-                          Color(0xFF2563EB),
-                          Color(0xFF3B82F6),
-                        ],
-                      ),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                const AssignJudgesScreen(),
+          ),
+        );
+      },
 
-                      ActionCard(
-                        title: "Schedule Event",
-                        icon:
-                            Icons.calendar_month_rounded,
-                        gradient: [
-                          Color(0xFF16A34A),
-                          Color(0xFF22C55E),
-                        ],
-                      ),
-                    ],
-                  ),
+      child: const ActionCard(
+        title: "Manage Judges",
+        icon: Icons.groups_rounded,
+
+        gradient: [
+          Color(0xFFA21CAF),
+          Color(0xFFD946EF),
+        ],
+      ),
+    ),
+
+    const ActionCard(
+      title: "View Submissions",
+      icon:
+          Icons.description_outlined,
+      gradient: [
+        Color(0xFF2563EB),
+        Color(0xFF3B82F6),
+      ],
+    ),
+
+    const ActionCard(
+      title: "Schedule Event",
+      icon:
+          Icons.calendar_month_rounded,
+      gradient: [
+        Color(0xFF16A34A),
+        Color(0xFF22C55E),
+      ],
+    ),
+  ],
+),
 
                   const SizedBox(height: 24),
 
