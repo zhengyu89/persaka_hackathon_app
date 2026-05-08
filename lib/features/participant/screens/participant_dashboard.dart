@@ -5,14 +5,14 @@ import '../../submit/screens/submit_screen.dart';
 import '../../team/screens/team_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 
-class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+class ParticipantDashboard extends StatefulWidget {
+  const ParticipantDashboard({super.key});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  State<ParticipantDashboard> createState() => _ParticipantDashboardState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _ParticipantDashboardState extends State<ParticipantDashboard> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = [
