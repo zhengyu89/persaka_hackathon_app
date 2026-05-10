@@ -25,7 +25,18 @@ class AuthService {
       email: email,
       password: password,
     );
-    return credential.user;
+
+    final user = credential.user;
+
+    if (user != null) {
+      await _firestore.collection('users').doc(user.uid).set({
+        'email': email,
+        'role': 'participant', // DEFAULT ROLE
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+
+    return user;
   }
 
   Future<User?> login(String email, String password) async {
@@ -34,6 +45,31 @@ class AuthService {
       password: password,
     );
     return credential.user;
+  }
+
+  Future<String> getUserRole(User user) async {
+    // Hardcoded Admin
+    const adminEmails = [
+      'danishekhsan@gmail.com', // Aiman (testing for admin role)
+      'admin2@gmail.com',
+      'admin3@gmail.com',
+      'h58176801@gmail.com', // Aidil
+    ];
+
+    if (adminEmails.contains(user.email)) {
+      return 'admin';
+    }
+
+    final doc = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    if (doc.exists) {
+      return doc.data()?['role'] ?? 'participant';
+    }
+
+    return 'participant';
   }
 
   Future<void> logout() async {
@@ -55,7 +91,22 @@ class AuthService {
         idToken: googleAuth.idToken,
       );
       final userCredential = await _auth.signInWithCredential(credential);
-      return userCredential.user;
+      final user = userCredential.user;
+      if (user != null) {
+        final doc = await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (!doc.exists) {
+          await _firestore.collection('users').doc(user.uid).set({
+            'email': user.email,
+            'role': 'participant',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }
+      return user;
     } on FirebaseAuthException catch (error) {
       throw GoogleSignInAuthException(_mapFirebaseGoogleMessage(error.code));
     } on PlatformException catch (error) {
