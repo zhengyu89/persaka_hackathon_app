@@ -151,7 +151,11 @@ class _CreateTeamScreenState
         context,
         MaterialPageRoute(
           builder: (_) =>
-              const CreateTeamSuccessScreen(),
+              CreateTeamSuccessScreen(
+                teamName:
+                    teamNameController.text.trim(),
+                teamCode: teamCode,
+              ),
         ),
       );
 

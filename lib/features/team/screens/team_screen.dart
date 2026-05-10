@@ -1,48 +1,66 @@
-// team_screen.dart
-
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
+import '../../../shared/widgets/hackathon_cover.dart';
 import '../../../shared/widgets/participant_ui.dart';
 import 'create_team_screen.dart';
 import 'join_team_screen.dart';
 
 class TeamScreen extends StatelessWidget {
-  const TeamScreen({super.key});
+  const TeamScreen({
+    super.key,
+    this.viewAllTeams = false,
+    this.allowTeamActions = true,
+    this.title,
+    this.subtitle,
+  });
+
+  const TeamScreen.viewer({
+    super.key,
+    this.title = 'Team Directory',
+    this.subtitle =
+        'Browse every registered team, member list, and hackathon enrollment.',
+  }) : viewAllTeams = true,
+       allowTeamActions = false;
+
+  final bool viewAllTeams;
+  final bool allowTeamActions;
+  final String? title;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
-
-    ////////////////////////////////////////////////////////////
-    /// CURRENT USER EMAIL
-    ////////////////////////////////////////////////////////////
-
-    final String email =
+    final currentEmail =
         FirebaseAuth.instance.currentUser?.email ?? '';
 
-    ////////////////////////////////////////////////////////////
-    /// CHECK TEAM FROM FIRESTORE
-    ////////////////////////////////////////////////////////////
+    if (!viewAllTeams && currentEmail.isEmpty) {
+      return ParticipantPageScaffold(
+        title: title ?? 'Teams',
+        subtitle: subtitle ?? 'Sign in again to load your teams.',
+        icon: Icons.groups_2_rounded,
+        children: const [
+          _StatusCard(
+            title: 'No active session',
+            subtitle: 'We could not read the current user email.',
+            icon: Icons.lock_outline_rounded,
+          ),
+        ],
+      );
+    }
 
-    return FutureBuilder<QuerySnapshot>(
-      future: FirebaseFirestore.instance
-          .collection('teams')
-          .where(
-            'members',
-            arrayContains: email,
-          )
-          .get(),
-
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: viewAllTeams
+          ? FirebaseFirestore.instance
+              .collection('teams')
+              .snapshots()
+          : FirebaseFirestore.instance
+              .collection('teams')
+              .where('members', arrayContains: currentEmail)
+              .snapshots(),
       builder: (context, snapshot) {
-
-        ////////////////////////////////////////////////////////
-        /// LOADING
-        ////////////////////////////////////////////////////////
-
-        if (snapshot.connectionState ==
-            ConnectionState.waiting) {
-
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
           return const Scaffold(
             body: Center(
               child: CircularProgressIndicator(),
@@ -50,387 +68,998 @@ class TeamScreen extends StatelessWidget {
           );
         }
 
-        ////////////////////////////////////////////////////////
-        /// USER HAS TEAM
-        ////////////////////////////////////////////////////////
-
-        if (snapshot.hasData &&
-            snapshot.data!.docs.isNotEmpty) {
-
-          final teamData =
-              snapshot.data!.docs.first;
-
-          return _HaveTeamView(
-            teamData: teamData,
+        if (snapshot.hasError) {
+          return ParticipantPageScaffold(
+            title: title ?? 'Teams',
+            subtitle: subtitle ??
+                'There was a problem loading your team workspace.',
+            icon: Icons.groups_2_rounded,
+            children: const [
+              _StatusCard(
+                title: 'Could not load teams',
+                subtitle:
+                    'Please try again after checking your connection.',
+                icon: Icons.error_outline_rounded,
+              ),
+            ],
           );
         }
 
-        ////////////////////////////////////////////////////////
-        /// USER NO TEAM
-        ////////////////////////////////////////////////////////
+        final teamDocs = snapshot.data?.docs.toList() ?? [];
+        teamDocs.sort((a, b) {
+          final aTime = a.data()['createdAt'] as Timestamp?;
+          final bTime = b.data()['createdAt'] as Timestamp?;
+          return (bTime?.millisecondsSinceEpoch ?? 0)
+              .compareTo(aTime?.millisecondsSinceEpoch ?? 0);
+        });
 
-        return const _NoTeamView();
+        if (teamDocs.isEmpty) {
+          return _NoTeamsView(
+            allowTeamActions: allowTeamActions,
+            title: title,
+            subtitle: subtitle,
+          );
+        }
+
+        return _TeamsWorkspaceView(
+          currentEmail: currentEmail,
+          teamDocs: teamDocs,
+          allowTeamActions: allowTeamActions,
+          title: title,
+          subtitle: subtitle,
+        );
       },
     );
   }
 }
 
-////////////////////////////////////////////////////////////
-/// NO TEAM VIEW
-////////////////////////////////////////////////////////////
+class _NoTeamsView extends StatelessWidget {
+  const _NoTeamsView({
+    required this.allowTeamActions,
+    this.title,
+    this.subtitle,
+  });
 
-class _NoTeamView extends StatelessWidget {
-  const _NoTeamView();
+  final bool allowTeamActions;
+  final String? title;
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor:
-          const Color(0xFFF9FAFB),
-
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-
-            //////////////////////////////////////////////////////
-            /// HEADER
-            //////////////////////////////////////////////////////
-
-            _headerSection(),
-
-            //////////////////////////////////////////////////////
-            /// BODY
-            //////////////////////////////////////////////////////
-
-            Transform.translate(
-              offset: const Offset(0, -30),
-
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(
-                  horizontal: 16,
-                ),
-
-                child: Column(
-                  children: [
-
-                    //////////////////////////////////////////////////
-                    /// ACTIONS
-                    //////////////////////////////////////////////////
-
-                    _actionCards(context),
-
-                    const SizedBox(height: 20),
-
-                    //////////////////////////////////////////////////
-                    /// WHY TEAM
-                    //////////////////////////////////////////////////
-
-                    _whyTeamCard(),
-
-                    const SizedBox(height: 20),
-
-                    //////////////////////////////////////////////////
-                    /// GUIDELINES
-                    //////////////////////////////////////////////////
-
-                    _guidelineCard(),
-
-                    const SizedBox(height: 40),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+    return ParticipantPageScaffold(
+      title: title ?? 'Teams',
+      subtitle: subtitle ??
+          (allowTeamActions
+              ? 'Create new teams, join existing ones, and register leader-owned teams for hackathons.'
+              : 'No teams have been registered yet. Once teams are created, you can review them here.'),
+      icon: Icons.groups_2_rounded,
+      trailing: const ParticipantInfoChip(
+        label: '0 Teams',
+        color: Colors.white,
       ),
-    );
-  }
-
-  ////////////////////////////////////////////////////////////
-  /// HEADER
-  ////////////////////////////////////////////////////////////
-
-  Widget _headerSection() {
-    return Container(
-      width: double.infinity,
-
-      padding: const EdgeInsets.only(
-        top: 60,
-        left: 20,
-        right: 20,
-        bottom: 60,
-      ),
-
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Color(0xFF4F39F6),
-            Color(0xFF9810FA),
-            Color(0xFF432DD7),
-          ],
-        ),
-
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
-        ),
-      ),
-
-      child: Column(
-        children: [
-
-          ////////////////////////////////////////////////////////
-          /// TITLE
-          ////////////////////////////////////////////////////////
-
-          Row(
-            children: [
-
-              const Icon(
-                Icons.groups_rounded,
-                color: Colors.white,
-              ),
-
-              const SizedBox(width: 12),
-
-              const Text(
-                "Team Formation",
-
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight:
-                      FontWeight.bold,
-                ),
-              )
-            ],
-          ),
-
-          const SizedBox(height: 40),
-
-          ////////////////////////////////////////////////////////
-          /// ICON
-          ////////////////////////////////////////////////////////
-
-          Container(
-            width: 90,
-            height: 90,
-
-            decoration: BoxDecoration(
-              color:
-                  Colors.white.withOpacity(0.2),
-
-              borderRadius:
-                  BorderRadius.circular(24),
-            ),
-
-            child: const Icon(
-              Icons.groups_2_rounded,
-              color: Colors.white,
-              size: 50,
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          ////////////////////////////////////////////////////////
-          /// HEADING
-          ////////////////////////////////////////////////////////
-
-          const Text(
-            "Join or Create a Team",
-
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight:
-                  FontWeight.bold,
-            ),
-          ),
-
-          const SizedBox(height: 10),
-
-          ////////////////////////////////////////////////////////
-          /// SUBTITLE
-          ////////////////////////////////////////////////////////
-
-          const Text(
-            "Collaborate with others to build amazing projects",
-
-            textAlign: TextAlign.center,
-
-            style: TextStyle(
-              color: Color(0xFFD6D6FF),
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  ////////////////////////////////////////////////////////////
-  /// ACTION CARDS
-  ////////////////////////////////////////////////////////////
-
-  Widget _actionCards(BuildContext context) {
-    return Row(
       children: [
-
-        ////////////////////////////////////////////////////////
-        /// CREATE TEAM
-        ////////////////////////////////////////////////////////
-
-        Expanded(
-          child: _gradientCard(
-            title: "Create Team",
-            subtitle: "Start a new team",
-            icon: Icons.add,
-
-            colors: const [
-              Color(0xFF615FFF),
-              Color(0xFF9810FA),
-            ],
-
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      const CreateTeamScreen(),
+        if (allowTeamActions) ...[
+          const ParticipantCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ParticipantSectionHeader(
+                  title: 'Build your team workspace',
+                  subtitle:
+                      'Every team you join will appear here automatically after the create or join flow finishes.',
                 ),
-              );
-            },
+                SizedBox(height: 8),
+                ParticipantBulletRow(
+                  text:
+                      'You can join or create multiple teams from the same account.',
+                  icon: Icons.repeat_rounded,
+                  color: ParticipantPalette.primary,
+                ),
+                ParticipantBulletRow(
+                  text:
+                      'Team leaders can delete teams they own and register them for hackathons.',
+                  icon: Icons.admin_panel_settings_outlined,
+                  color: ParticipantPalette.warning,
+                ),
+                ParticipantBulletRow(
+                  text:
+                      'Admins can publish hackathons with a description and poster for leaders to join.',
+                  icon: Icons.rocket_launch_outlined,
+                  color: ParticipantPalette.success,
+                ),
+              ],
+            ),
+          ),
+          _TeamActionCardRow(
+            onCreate: () => _openCreateTeam(context),
+            onJoin: () => _openJoinTeam(context),
+          ),
+          const ParticipantCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ParticipantSectionHeader(
+                  title: 'Team Guidelines',
+                  subtitle:
+                      'A quick reminder before you start inviting or joining members.',
+                ),
+                SizedBox(height: 8),
+                ParticipantBulletRow(
+                  text:
+                      'Leaders receive a unique team code that can be shared with members.',
+                  icon: Icons.key_rounded,
+                  color: ParticipantPalette.primary,
+                ),
+                ParticipantBulletRow(
+                  text:
+                      'Joined teams stay visible on this page, so you can move between them easily.',
+                  icon: Icons.visibility_outlined,
+                  color: ParticipantPalette.secondary,
+                ),
+                ParticipantBulletRow(
+                  text:
+                      'Only the team owner can delete the team or enroll it in a hackathon.',
+                  icon: Icons.shield_outlined,
+                  color: ParticipantPalette.danger,
+                ),
+              ],
+            ),
+          ),
+        ] else
+          const ParticipantCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ParticipantSectionHeader(
+                  title: 'Team viewer is ready',
+                  subtitle:
+                      'This screen will automatically list every registered team once participants create them.',
+                ),
+                SizedBox(height: 8),
+                ParticipantBulletRow(
+                  text:
+                      'Admins and judges can review team names, members, and joined hackathons here.',
+                  icon: Icons.visibility_outlined,
+                  color: ParticipantPalette.primary,
+                ),
+                ParticipantBulletRow(
+                  text:
+                      'Participant-only actions such as create, join, delete, and hackathon registration stay hidden in this view.',
+                  icon: Icons.lock_outline_rounded,
+                  color: ParticipantPalette.warning,
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _TeamsWorkspaceView extends StatelessWidget {
+  const _TeamsWorkspaceView({
+    required this.currentEmail,
+    required this.teamDocs,
+    required this.allowTeamActions,
+    this.title,
+    this.subtitle,
+  });
+
+  final String currentEmail;
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> teamDocs;
+  final bool allowTeamActions;
+  final String? title;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final leaderTeams = teamDocs.where((doc) {
+      return (doc.data()['leader'] ?? '') == currentEmail;
+    }).length;
+
+    return ParticipantPageScaffold(
+      title: title ?? 'Teams',
+      subtitle: subtitle ??
+          (allowTeamActions
+              ? 'This workspace refreshes automatically when you create or join a team.'
+              : 'Browse every registered team, including members and hackathon participation.'),
+      icon: Icons.groups_2_rounded,
+      trailing: ParticipantInfoChip(
+        label: '${teamDocs.length} Teams',
+        color: Colors.white,
+      ),
+      children: [
+        ParticipantCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const ParticipantSectionHeader(
+                title: 'Team Overview',
+                subtitle:
+                    'Manage every team linked to your account from one place.',
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _StatPill(
+                    label: allowTeamActions ? 'Joined' : 'Listed',
+                    value: '${teamDocs.length}',
+                    color: ParticipantPalette.primary,
+                  ),
+                  const SizedBox(width: 12),
+                  _StatPill(
+                    label: allowTeamActions ? 'Leading' : 'Owned',
+                    value: '$leaderTeams',
+                    color: ParticipantPalette.warning,
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-
-        const SizedBox(width: 16),
-
-        ////////////////////////////////////////////////////////
-        /// JOIN TEAM
-        ////////////////////////////////////////////////////////
-
-        Expanded(
-          child: _gradientCard(
-            title: "Join Team",
-            subtitle: "Use team code",
-            icon:
-                Icons.group_add_rounded,
-
-            colors: const [
-              Color(0xFFAD46FF),
-              Color(0xFFE60076),
-            ],
-
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      const JoinTeamScreen(),
-                ),
-              );
-            },
+        if (allowTeamActions)
+          _TeamActionCardRow(
+            onCreate: () => _openCreateTeam(context),
+            onJoin: () => _openJoinTeam(context),
+          ),
+        ...teamDocs.map(
+          (doc) => _TeamCard(
+            currentEmail: currentEmail,
+            teamDoc: doc,
+            allowTeamActions: allowTeamActions,
           ),
         ),
       ],
     );
   }
+}
 
-  ////////////////////////////////////////////////////////////
-  /// CARD
-  ////////////////////////////////////////////////////////////
+class _TeamActionCardRow extends StatelessWidget {
+  const _TeamActionCardRow({
+    required this.onCreate,
+    required this.onJoin,
+  });
 
-  Widget _gradientCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required List<Color> colors,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
+  final VoidCallback onCreate;
+  final VoidCallback onJoin;
 
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _ActionCard(
+            title: 'Create Team',
+            subtitle: 'Start another team',
+            icon: Icons.add_rounded,
+            colors: const [
+              Color(0xFF615FFF),
+              Color(0xFF9810FA),
+            ],
+            onTap: onCreate,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: _ActionCard(
+            title: 'Join Team',
+            subtitle: 'Use a shared code',
+            icon: Icons.group_add_rounded,
+            colors: const [
+              Color(0xFFAD46FF),
+              Color(0xFFE60076),
+            ],
+            onTap: onJoin,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TeamCard extends StatelessWidget {
+  const _TeamCard({
+    required this.currentEmail,
+    required this.teamDoc,
+    required this.allowTeamActions,
+  });
+
+  final String currentEmail;
+  final QueryDocumentSnapshot<Map<String, dynamic>> teamDoc;
+  final bool allowTeamActions;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = teamDoc.data();
+    final teamName = data['teamName'] ?? 'Untitled Team';
+    final teamCode = data['teamCode'] ?? teamDoc.id;
+    final leader = data['leader'] ?? '';
+    final description = data['teamDescription'] ?? '';
+    final members = List<String>.from(data['members'] ?? const []);
+    final isLeader = leader == currentEmail;
+
+    return ParticipantCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 58,
+                height: 58,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Color(0xFF615FFF),
+                      Color(0xFF9810FA),
+                    ],
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.groups_rounded,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      teamName,
+                      style: const TextStyle(
+                        color: ParticipantPalette.textPrimary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _InfoTag(
+                          label: 'Code $teamCode',
+                          backgroundColor: const Color(0xFFEEF2FF),
+                          textColor: ParticipantPalette.primary,
+                        ),
+                        _InfoTag(
+                          label: '${members.length} Members',
+                          backgroundColor: const Color(0xFFF4F4F5),
+                          textColor: const Color(0xFF4B5563),
+                        ),
+                        _InfoTag(
+                          label: allowTeamActions
+                              ? (isLeader ? 'Owner' : 'Member')
+                              : 'View Only',
+                          backgroundColor: allowTeamActions && isLeader
+                              ? const Color(0xFFFFF4DB)
+                              : const Color(0xFFEFF6FF),
+                          textColor: allowTeamActions && isLeader
+                              ? const Color(0xFFB45309)
+                              : const Color(0xFF1D4ED8),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          ParticipantBulletRow(
+            text: description.isEmpty
+                ? 'No team description has been added yet.'
+                : description,
+            icon: Icons.lightbulb_outline_rounded,
+            color: ParticipantPalette.primary,
+          ),
+          ParticipantBulletRow(
+            text: leader.isEmpty
+                ? 'No owner recorded for this team.'
+                : 'Team owner: $leader',
+            icon: Icons.person_outline_rounded,
+            color: ParticipantPalette.secondary,
+          ),
+          const SizedBox(height: 6),
+          if (allowTeamActions && isLeader)
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () {
+                    _openHackathonJoinSheet(
+                      context,
+                      teamCode: teamCode,
+                      teamName: teamName,
+                    );
+                  },
+                  icon: const Icon(Icons.rocket_launch_rounded),
+                  label: const Text('Join Hackathon'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ParticipantPalette.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    _deleteTeam(
+                      context,
+                      teamDocId: teamDoc.id,
+                      teamCode: teamCode,
+                      teamName: teamName,
+                    );
+                  },
+                  icon: const Icon(Icons.delete_outline_rounded),
+                  label: const Text('Delete Team'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: ParticipantPalette.danger,
+                    side: const BorderSide(
+                      color: ParticipantPalette.danger,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else if (allowTeamActions)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Text(
+                'Only $leader can delete this team or register it for hackathons.',
+                style: const TextStyle(
+                  color: ParticipantPalette.textSecondary,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          const SizedBox(height: 22),
+          const ParticipantSectionHeader(
+            title: 'Members',
+            subtitle: 'Everyone currently assigned to this team.',
+          ),
+          const SizedBox(height: 4),
+          ...members.map(
+            (member) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _MemberTile(email: member),
+            ),
+          ),
+          const SizedBox(height: 10),
+          _TeamHackathonsSection(
+            teamCode: teamCode,
+            teamName: teamName,
+            canJoinHackathons:
+                allowTeamActions && isLeader,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeamHackathonsSection extends StatelessWidget {
+  const _TeamHackathonsSection({
+    required this.teamCode,
+    required this.teamName,
+    required this.canJoinHackathons,
+  });
+
+  final String teamCode;
+  final String teamName;
+  final bool canJoinHackathons;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('hackathons')
+          .where('registeredTeams', arrayContains: teamCode)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final hackathons = snapshot.data?.docs.toList() ?? [];
+        hackathons.sort((a, b) {
+          final aTime = a.data()['createdAt'] as Timestamp?;
+          final bTime = b.data()['createdAt'] as Timestamp?;
+          return (bTime?.millisecondsSinceEpoch ?? 0)
+              .compareTo(aTime?.millisecondsSinceEpoch ?? 0);
+        });
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ParticipantSectionHeader(
+              title: 'Hackathons',
+              subtitle: canJoinHackathons
+                  ? 'Register this team for active hackathons and track where it is enrolled.'
+                  : 'Review the hackathons this team has joined.',
+              action: canJoinHackathons
+                  ? TextButton(
+                      onPressed: () {
+                        _openHackathonJoinSheet(
+                          context,
+                          teamCode: teamCode,
+                          teamName: teamName,
+                        );
+                      },
+                      child: const Text('Join'),
+                    )
+                  : null,
+            ),
+            if (snapshot.connectionState == ConnectionState.waiting &&
+                !snapshot.hasData)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 18),
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            else if (hackathons.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      canJoinHackathons
+                          ? 'This team has not joined a hackathon yet.'
+                          : 'This team has not joined a hackathon yet.',
+                      style: const TextStyle(
+                        color: ParticipantPalette.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      canJoinHackathons
+                          ? 'Tap Join to register this team once an admin publishes a hackathon.'
+                          : 'No hackathon registrations have been recorded for this team yet.',
+                      style: const TextStyle(
+                        color: ParticipantPalette.textSecondary,
+                        fontSize: 13,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              ...hackathons.map(
+                (doc) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _JoinedHackathonCard(doc: doc),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _JoinedHackathonCard extends StatelessWidget {
+  const _JoinedHackathonCard({
+    required this.doc,
+  });
+
+  final QueryDocumentSnapshot<Map<String, dynamic>> doc;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = doc.data();
+    final registeredTeams =
+        List<String>.from(data['registeredTeams'] ?? const []);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          HackathonCover(
+            imageBase64: data['imageBase64'] ?? '',
+            height: 130,
+            borderRadius: 18,
+            placeholderLabel: 'No poster available',
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data['title'] ?? 'Untitled Hackathon',
+                      style: const TextStyle(
+                        color: ParticipantPalette.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      data['description'] ?? 'No description',
+                      style: const TextStyle(
+                        color: ParticipantPalette.textSecondary,
+                        fontSize: 13,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              _InfoTag(
+                label: '${registeredTeams.length} Teams',
+                backgroundColor: const Color(0xFFEEF2FF),
+                textColor: ParticipantPalette.primary,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HackathonJoinSheet extends StatefulWidget {
+  const _HackathonJoinSheet({
+    required this.teamCode,
+    required this.teamName,
+  });
+
+  final String teamCode;
+  final String teamName;
+
+  @override
+  State<_HackathonJoinSheet> createState() =>
+      _HackathonJoinSheetState();
+}
+
+class _HackathonJoinSheetState
+    extends State<_HackathonJoinSheet> {
+  String? _joiningHackathonId;
+
+  Future<void> _joinHackathon(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) async {
+    final registeredTeams =
+        List<String>.from(doc.data()['registeredTeams'] ?? const []);
+
+    if (registeredTeams.contains(widget.teamCode)) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This team is already in that hackathon.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _joiningHackathonId = doc.id;
+    });
+
+    try {
+      await doc.reference.update({
+        'registeredTeams': FieldValue.arrayUnion([
+          widget.teamCode,
+        ]),
+      });
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${widget.teamName} joined ${doc.data()['title'] ?? 'the hackathon'}.',
+          ),
+        ),
+      );
+      Navigator.pop(context);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not join hackathon: $error'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _joiningHackathonId = null;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
       child: Container(
-        height: 170,
+        height: MediaQuery.of(context).size.height * 0.85,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(28),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 52,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD1D5DB),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'Join a Hackathon',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: ParticipantPalette.textPrimary,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Choose a published hackathon for ${widget.teamName}.',
+              style: const TextStyle(
+                color: ParticipantPalette.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: FirebaseFirestore.instance
+                    .collection('hackathons')
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState ==
+                          ConnectionState.waiting &&
+                      !snapshot.hasData) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
 
-        decoration: BoxDecoration(
-          gradient:
-              LinearGradient(colors: colors),
+                  if (snapshot.hasError) {
+                    return const _StatusCard(
+                      title: 'Could not load hackathons',
+                      subtitle:
+                          'Please try again after checking Firestore.',
+                      icon: Icons.error_outline_rounded,
+                    );
+                  }
 
-          borderRadius:
-              BorderRadius.circular(20),
+                  final hackathons = snapshot.data?.docs.toList() ?? [];
+                  hackathons.sort((a, b) {
+                    final aTime = a.data()['createdAt'] as Timestamp?;
+                    final bTime = b.data()['createdAt'] as Timestamp?;
+                    return (bTime?.millisecondsSinceEpoch ?? 0)
+                        .compareTo(aTime?.millisecondsSinceEpoch ?? 0);
+                  });
 
-          boxShadow: [
-            BoxShadow(
-              color:
-                  Colors.black.withOpacity(0.08),
+                  if (hackathons.isEmpty) {
+                    return const _StatusCard(
+                      title: 'No published hackathons yet',
+                      subtitle:
+                          'An admin needs to add one before teams can join.',
+                      icon: Icons.event_busy_outlined,
+                    );
+                  }
 
-              blurRadius: 10,
+                  return ListView.builder(
+                    itemCount: hackathons.length,
+                    itemBuilder: (context, index) {
+                      final doc = hackathons[index];
+                      final data = doc.data();
+                      final registeredTeams = List<String>.from(
+                        data['registeredTeams'] ?? const [],
+                      );
+                      final alreadyJoined = registeredTeams
+                          .contains(widget.teamCode);
 
-              offset: const Offset(0, 5),
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(22),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            HackathonCover(
+                              imageBase64: data['imageBase64'] ?? '',
+                              height: 150,
+                              borderRadius: 18,
+                              placeholderLabel: 'No poster available',
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              data['title'] ?? 'Untitled Hackathon',
+                              style: const TextStyle(
+                                color: ParticipantPalette.textPrimary,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              data['description'] ?? 'No description',
+                              style: const TextStyle(
+                                color: ParticipantPalette.textSecondary,
+                                fontSize: 13,
+                                height: 1.45,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                _InfoTag(
+                                  label:
+                                      '${registeredTeams.length} Teams Joined',
+                                  backgroundColor:
+                                      const Color(0xFFEEF2FF),
+                                  textColor:
+                                      ParticipantPalette.primary,
+                                ),
+                                const Spacer(),
+                                ElevatedButton(
+                                  onPressed: alreadyJoined ||
+                                          _joiningHackathonId == doc.id
+                                      ? null
+                                      : () => _joinHackathon(doc),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: alreadyJoined
+                                        ? const Color(0xFFE5E7EB)
+                                        : ParticipantPalette.primary,
+                                    foregroundColor: alreadyJoined
+                                        ? const Color(0xFF4B5563)
+                                        : Colors.white,
+                                  ),
+                                  child: _joiningHackathonId == doc.id
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child:
+                                              CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : Text(
+                                          alreadyJoined
+                                              ? 'Joined'
+                                              : 'Join',
+                                        ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
 
+class _ActionCard extends StatelessWidget {
+  const _ActionCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.colors,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final List<Color> colors;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 166,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: colors),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x190F172A),
+              blurRadius: 18,
+              offset: Offset(0, 10),
+            ),
+          ],
+        ),
         child: Column(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
-
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
-            //////////////////////////////////////////////////////
-            /// ICON
-            //////////////////////////////////////////////////////
-
             Container(
-              padding:
-                  const EdgeInsets.all(18),
-
+              width: 54,
+              height: 54,
               decoration: BoxDecoration(
-                color:
-                    Colors.white.withOpacity(0.2),
-
-                borderRadius:
-                    BorderRadius.circular(16),
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(16),
               ),
-
               child: Icon(
                 icon,
                 color: Colors.white,
-                size: 34,
               ),
             ),
-
-            const SizedBox(height: 20),
-
-            //////////////////////////////////////////////////////
-            /// TITLE
-            //////////////////////////////////////////////////////
-
+            const Spacer(),
             Text(
               title,
-
               style: const TextStyle(
                 color: Colors.white,
-                fontWeight:
-                    FontWeight.bold,
                 fontSize: 18,
+                fontWeight: FontWeight.w700,
               ),
             ),
-
             const SizedBox(height: 6),
-
-            //////////////////////////////////////////////////////
-            /// SUBTITLE
-            //////////////////////////////////////////////////////
-
             Text(
               subtitle,
-
               style: const TextStyle(
-                color: Colors.white70,
+                color: Color(0xFFEAE7FF),
                 fontSize: 13,
               ),
             ),
@@ -439,505 +1068,281 @@ class _NoTeamView extends StatelessWidget {
       ),
     );
   }
-
-  ////////////////////////////////////////////////////////////
-  /// WHY TEAM CARD
-  ////////////////////////////////////////////////////////////
-
-  Widget _whyTeamCard() {
-    return _whiteCard(
-      child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
-
-        children: const [
-
-          Text(
-            "Why form a team?",
-
-            style: TextStyle(
-              fontWeight:
-                  FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-
-          SizedBox(height: 20),
-
-          _InfoTile(
-            emoji: "🤝",
-            title: "Collaborate",
-            subtitle:
-                "Work together on projects",
-          ),
-
-          SizedBox(height: 16),
-
-          _InfoTile(
-            emoji: "💡",
-            title: "Share Ideas",
-            subtitle:
-                "Brainstorm and innovate",
-          ),
-
-          SizedBox(height: 16),
-
-          _InfoTile(
-            emoji: "🏆",
-            title: "Win Together",
-            subtitle:
-                "Compete as a unified team",
-          ),
-        ],
-      ),
-    );
-  }
-
-  ////////////////////////////////////////////////////////////
-  /// GUIDELINE CARD
-  ////////////////////////////////////////////////////////////
-
-  Widget _guidelineCard() {
-    return Container(
-      width: double.infinity,
-
-      padding: const EdgeInsets.all(20),
-
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFFEEF2FF),
-            Color(0xFFFAF5FF),
-          ],
-        ),
-
-        borderRadius:
-            BorderRadius.circular(20),
-
-        border: Border.all(
-          color: const Color(0xFFE0E7FF),
-        ),
-      ),
-
-      child: const Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
-
-        children: [
-
-          Text(
-            "Team Guidelines",
-
-            style: TextStyle(
-              fontWeight:
-                  FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
-
-          SizedBox(height: 18),
-
-          _BulletText(
-            "Maximum 4 members per team",
-          ),
-
-          SizedBox(height: 10),
-
-          _BulletText(
-            "You can only be part of one team",
-          ),
-
-          SizedBox(height: 10),
-
-          _BulletText(
-            "Team leader manages submissions",
-          ),
-        ],
-      ),
-    );
-  }
-
-  ////////////////////////////////////////////////////////////
-  /// WHITE CARD
-  ////////////////////////////////////////////////////////////
-
-  Widget _whiteCard({
-    required Widget child,
-  }) {
-    return Container(
-      width: double.infinity,
-
-      padding: const EdgeInsets.all(20),
-
-      decoration: BoxDecoration(
-        color: Colors.white,
-
-        borderRadius:
-            BorderRadius.circular(20),
-      ),
-
-      child: child,
-    );
-  }
 }
 
-////////////////////////////////////////////////////////////
-/// HAVE TEAM VIEW
-////////////////////////////////////////////////////////////
-
-class _HaveTeamView extends StatelessWidget {
-  const _HaveTeamView({
-    required this.teamData,
+class _MemberTile extends StatelessWidget {
+  const _MemberTile({
+    required this.email,
   });
 
-  final QueryDocumentSnapshot teamData;
+  final String email;
 
   @override
   Widget build(BuildContext context) {
-
-    ////////////////////////////////////////////////////////////
-    /// DATA
-    ////////////////////////////////////////////////////////////
-
-    final data =
-        teamData.data() as Map<String, dynamic>;
-
-    final String teamName =
-        data['teamName'] ?? 'No Team';
-
-    final String teamCode =
-        data['teamCode'] ?? '';
-
-    final List members =
-        data['members'] ?? [];
-
-    final String description =
-        data['teamDescription'] ?? '';
-
-    return ParticipantPageScaffold(
-      title: teamName,
-
-      subtitle:
-          'Manage your team and project progress',
-
-      icon: Icons.groups_2_rounded,
-
-      trailing: ParticipantInfoChip(
-        label:
-            '${members.length} Members',
-
-        color: Colors.white,
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(18),
       ),
-
-      children: [
-
-        ////////////////////////////////////////////////////////
-        /// TEAM HEADER
-        ////////////////////////////////////////////////////////
-
-        ParticipantCard(
-          child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
-
-            children: [
-
-              ////////////////////////////////////////////////////
-              /// TOP ROW
-              ////////////////////////////////////////////////////
-
-              Row(
-                children: [
-
-                  Container(
-                    width: 56,
-                    height: 56,
-
-                    decoration:
-                        const BoxDecoration(
-                      gradient:
-                          LinearGradient(
-                        colors: [
-                          Color(0xFF615FFF),
-                          Color(0xFF9810FA),
-                        ],
-                      ),
-
-                      shape: BoxShape.circle,
-                    ),
-
-                    child: const Icon(
-                      Icons.groups_rounded,
-                      color: Colors.white,
-                    ),
-                  ),
-
-                  const SizedBox(width: 16),
-
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment
-                              .start,
-
-                      children: [
-
-                        Text(
-                          teamName,
-
-                          style:
-                              const TextStyle(
-                            fontWeight:
-                                FontWeight.bold,
-
-                            fontSize: 20,
-                          ),
-                        ),
-
-                        const SizedBox(height: 4),
-
-                        Text(
-                          "Team Code: $teamCode",
-
-                          style:
-                              const TextStyle(
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-
-              ////////////////////////////////////////////////////
-              /// DESCRIPTION
-              ////////////////////////////////////////////////////
-
-              ParticipantBulletRow(
-                text: description.isEmpty
-                    ? 'No team description'
-                    : description,
-
-                icon:
-                    Icons.lightbulb_rounded,
-
-                color:
-                    ParticipantPalette.primary,
-              ),
-            ],
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 22,
+            backgroundColor: const Color(0xFF6C63FF),
+            child: Text(
+              email.isEmpty ? '?' : email[0].toUpperCase(),
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
-        ),
-
-        ////////////////////////////////////////////////////////
-        /// MEMBERS
-        ////////////////////////////////////////////////////////
-
-        ParticipantCard(
-          child: Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
-
-            children: [
-
-              const ParticipantSectionHeader(
-                title: 'Members',
-                subtitle:
-                    'Current active team members',
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              email,
+              style: const TextStyle(
+                color: ParticipantPalette.textPrimary,
+                fontWeight: FontWeight.w700,
               ),
-
-              const SizedBox(height: 12),
-
-              ...members.map((member) {
-
-                return Padding(
-                  padding:
-                      const EdgeInsets.only(
-                    bottom: 12,
-                  ),
-
-                  child: Container(
-                    padding:
-                        const EdgeInsets.all(14),
-
-                    decoration: BoxDecoration(
-                      color:
-                          const Color(
-                              0xFFF8F8FD),
-
-                      borderRadius:
-                          BorderRadius.circular(
-                              18),
-                    ),
-
-                    child: Row(
-                      children: [
-
-                        //////////////////////////////////////////////////
-                        /// AVATAR
-                        //////////////////////////////////////////////////
-
-                        CircleAvatar(
-                          radius: 24,
-
-                          backgroundColor:
-                              const Color(
-                                  0xFF6C63FF),
-
-                          child: Text(
-                            member
-                                .toString()
-                                .substring(0, 1)
-                                .toUpperCase(),
-
-                            style:
-                                const TextStyle(
-                              color:
-                                  Colors.white,
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(
-                            width: 14),
-
-                        //////////////////////////////////////////////////
-                        /// EMAIL
-                        //////////////////////////////////////////////////
-
-                        Expanded(
-                          child: Text(
-                            member,
-
-                            style:
-                                const TextStyle(
-                              fontWeight:
-                                  FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-////////////////////////////////////////////////////////////
-/// INFO TILE
-////////////////////////////////////////////////////////////
+class _InfoTag extends StatelessWidget {
+  const _InfoTag({
+    required this.label,
+    required this.backgroundColor,
+    required this.textColor,
+  });
 
-class _InfoTile extends StatelessWidget {
-  const _InfoTile({
-    required this.emoji,
+  final String label;
+  final Color backgroundColor;
+  final Color textColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 8,
+      ),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  const _StatPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                color: color,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                color: ParticipantPalette.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusCard extends StatelessWidget {
+  const _StatusCard({
     required this.title,
     required this.subtitle,
+    required this.icon,
   });
 
-  final String emoji;
   final String title;
   final String subtitle;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-
-        Container(
-          width: 46,
-          height: 46,
-
-          decoration: BoxDecoration(
-            color:
-                const Color(0xFFF3F4F6),
-
-            borderRadius:
-                BorderRadius.circular(14),
+    return ParticipantCard(
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            size: 40,
+            color: ParticipantPalette.primary,
           ),
-
-          alignment: Alignment.center,
-
-          child: Text(
-            emoji,
-            style:
-                const TextStyle(fontSize: 22),
+          const SizedBox(height: 14),
+          Text(
+            title,
+            style: const TextStyle(
+              color: ParticipantPalette.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
-
-        const SizedBox(width: 14),
-
-        Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.start,
-
-          children: [
-
-            Text(
-              title,
-
-              style: const TextStyle(
-                fontWeight:
-                    FontWeight.bold,
-              ),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: ParticipantPalette.textSecondary,
+              fontSize: 13,
+              height: 1.45,
             ),
-
-            Text(
-              subtitle,
-
-              style: const TextStyle(
-                color: Colors.grey,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        )
-      ],
+          ),
+        ],
+      ),
     );
   }
 }
 
-////////////////////////////////////////////////////////////
-/// BULLET TEXT
-////////////////////////////////////////////////////////////
+void _openCreateTeam(BuildContext context) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const CreateTeamScreen(),
+    ),
+  );
+}
 
-class _BulletText extends StatelessWidget {
-  const _BulletText(this.text);
+void _openJoinTeam(BuildContext context) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => const JoinTeamScreen(),
+    ),
+  );
+}
 
-  final String text;
+void _openHackathonJoinSheet(
+  BuildContext context, {
+  required String teamCode,
+  required String teamName,
+}) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _HackathonJoinSheet(
+      teamCode: teamCode,
+      teamName: teamName,
+    ),
+  );
+}
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-
-        const Text(
-          "• ",
-
-          style: TextStyle(
-            color: Color(0xFF4F39F6),
-            fontWeight:
-                FontWeight.bold,
-          ),
+Future<void> _deleteTeam(
+  BuildContext context, {
+  required String teamDocId,
+  required String teamCode,
+  required String teamName,
+}) async {
+  final shouldDelete = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: const Text('Delete team?'),
+        content: Text(
+          'This will remove $teamName and unregister it from any hackathons it already joined.',
         ),
-
-        Expanded(
-          child: Text(
-            text,
-
-            style: const TextStyle(
-              color: Colors.black87,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: ParticipantPalette.danger),
             ),
           ),
-        ),
-      ],
+        ],
+      );
+    },
+  );
+
+  if (shouldDelete != true) {
+    return;
+  }
+
+  try {
+    final firestore = FirebaseFirestore.instance;
+    final hackathons = await firestore
+        .collection('hackathons')
+        .where('registeredTeams', arrayContains: teamCode)
+        .get();
+
+    final batch = firestore.batch();
+    batch.delete(firestore.collection('teams').doc(teamDocId));
+
+    for (final hackathon in hackathons.docs) {
+      batch.update(hackathon.reference, {
+        'registeredTeams': FieldValue.arrayRemove([teamCode]),
+      });
+    }
+
+    await batch.commit();
+
+    if (!context.mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$teamName deleted successfully.'),
+      ),
+    );
+  } catch (error) {
+    if (!context.mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Could not delete team: $error'),
+      ),
     );
   }
 }

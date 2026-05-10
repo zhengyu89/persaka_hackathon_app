@@ -54,6 +54,7 @@ class AuthService {
       'admin2@gmail.com',
       'admin3@gmail.com',
       'h58176801@gmail.com', // Aidil
+      'tanzhengyutan@gmail.com' // Tan Zheng Yu
     ];
 
     if (adminEmails.contains(user.email)) {

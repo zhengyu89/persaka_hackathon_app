@@ -1,9 +1,16 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'team_screen.dart';
 
 class JoinTeamSuccessScreen extends StatefulWidget {
-  const JoinTeamSuccessScreen({super.key});
+  const JoinTeamSuccessScreen({
+    super.key,
+    required this.teamName,
+    required this.teamCode,
+  });
+
+  final String teamName;
+  final String teamCode;
 
   @override
   State<JoinTeamSuccessScreen> createState() =>
@@ -12,33 +19,38 @@ class JoinTeamSuccessScreen extends StatefulWidget {
 
 class _JoinTeamSuccessScreenState
     extends State<JoinTeamSuccessScreen> {
+  Timer? _redirectTimer;
 
   @override
   void initState() {
     super.initState();
 
-    Timer(const Duration(seconds: 3), () {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const TeamScreen(),
-        ),
-        (route) => false,
-      );
-    });
+    _redirectTimer = Timer(
+      const Duration(seconds: 3),
+      _goBackToTeams,
+    );
+  }
+
+  @override
+  void dispose() {
+    _redirectTimer?.cancel();
+    super.dispose();
+  }
+
+  void _goBackToTeams() {
+    if (!mounted) {
+      return;
+    }
+
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
-
       body: Column(
         children: [
-          //////////////////////////////////////////////////////
-          /// HEADER
-          //////////////////////////////////////////////////////
-
           Container(
             width: double.infinity,
             padding: const EdgeInsets.only(
@@ -71,27 +83,23 @@ class _JoinTeamSuccessScreenState
                   ),
                   child: const Center(
                     child: Text(
-                      "🎉",
+                      '🎉',
                       style: TextStyle(fontSize: 34),
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 24),
-
                 const Text(
-                  "Welcome!",
+                  'Welcome!',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 const SizedBox(height: 10),
-
                 const Text(
-                  "You're part of the team now",
+                  'You are part of the team now',
                   style: TextStyle(
                     color: Color(0xFFD6D6FF),
                     fontSize: 14,
@@ -100,7 +108,6 @@ class _JoinTeamSuccessScreenState
               ],
             ),
           ),
-
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -140,30 +147,24 @@ class _JoinTeamSuccessScreenState
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 28),
-
                   const Text(
-                    "Successfully Joined!",
+                    'Successfully Joined!',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-
                   const SizedBox(height: 12),
-
-                  const Text(
-                    "You're now a member of the team",
+                  Text(
+                    'You are now a member of ${widget.teamName}.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Color(0xFF4A5565),
                       fontSize: 16,
                     ),
                   ),
-
                   const SizedBox(height: 30),
-
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
@@ -174,30 +175,53 @@ class _JoinTeamSuccessScreenState
                         color: const Color(0xFFE9D4FF),
                       ),
                     ),
-                    child: const Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.center,
+                    child: Column(
                       children: [
-                        Icon(
-                          Icons.celebration_rounded,
-                          color: Color(0xFF9810FA),
+                        const Row(
+                          mainAxisAlignment:
+                              MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.celebration_rounded,
+                              color: Color(0xFF9810FA),
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              'Welcome to your new team!',
+                              style: TextStyle(
+                                color: Color(0xFF364153),
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
                         ),
-
-                        SizedBox(width: 12),
-
-                        Text(
-                          "Welcome to your new team!",
-                          style: TextStyle(
-                            color: Color(0xFF364153),
-                            fontSize: 15,
+                        const SizedBox(height: 18),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF5F3FF),
+                            borderRadius:
+                                BorderRadius.circular(16),
+                          ),
+                          child: Center(
+                            child: Text(
+                              widget.teamCode,
+                              style: const TextStyle(
+                                color: Color(0xFF4F39F6),
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 3,
+                              ),
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 28),
-
                   const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -208,17 +232,20 @@ class _JoinTeamSuccessScreenState
                           strokeWidth: 2,
                         ),
                       ),
-
                       SizedBox(width: 12),
-
                       Text(
-                        "Redirecting to team page...",
+                        'Returning to your team workspace...',
                         style: TextStyle(
                           color: Color(0xFF4F39F6),
                         ),
                       ),
                     ],
-                  )
+                  ),
+                  const SizedBox(height: 20),
+                  TextButton(
+                    onPressed: _goBackToTeams,
+                    child: const Text('Go now'),
+                  ),
                 ],
               ),
             ),

@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../board/screens/board_screen.dart';
-import '../../home/screens/home_screen.dart';
-import '../../submit/screens/submit_screen.dart';
-import '../../team/screens/team_screen.dart';
 import '../../profile/screens/profile_screen.dart';
+import '../../team/screens/team_screen.dart';
 import '../../admin/screens/admin_manage_judges_screen.dart';
+import '../../admin/screens/admin_manage_hackathons_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -20,7 +19,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   final List<Widget> _pages = [
     const AdminDashboardScreen(),
-    const PlaceholderScreen(title: "Teams"),
+    const TeamScreen.viewer(),
+    const AdminManageHackathonsScreen(),
     const BoardScreen(),
     const ProfileScreen(),
   ];
@@ -89,6 +89,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
               BottomNavigationBarItem(
                 icon: Icon(Icons.groups_rounded),
                 label: "Teams",
+              ),
+
+              BottomNavigationBarItem(
+                icon: Icon(Icons.rocket_launch_rounded),
+                label: "Hackathons",
               ),
 
               BottomNavigationBarItem(
@@ -423,13 +428,23 @@ GridView.count(
 
   children: [
 
-    const ActionCard(
-      title: "Create\nAnnouncement",
-      icon: Icons.notifications_none,
-      gradient: [
-        Color(0xFF4F46E5),
-        Color(0xFF6366F1),
-      ],
+    GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const AdminManageHackathonsScreen(),
+          ),
+        );
+      },
+      child: const ActionCard(
+        title: "Add\nHackathon",
+        icon: Icons.rocket_launch_rounded,
+        gradient: [
+          Color(0xFF4F46E5),
+          Color(0xFF6366F1),
+        ],
+      ),
     ),
 
     GestureDetector(

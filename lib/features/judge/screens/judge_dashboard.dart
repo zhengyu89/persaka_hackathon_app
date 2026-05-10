@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../board/screens/board_screen.dart';
-import '../../home/screens/home_screen.dart';
-import '../../submit/screens/submit_screen.dart';
 import '../../team/screens/team_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 
@@ -16,10 +14,12 @@ class _JudgeDashboardState extends State<JudgeDashboard> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = [
-    // const HomeScreen(),
-    // const TeamScreen(),
-    // const SubmitScreen(),
     const BoardScreen(),
+    const TeamScreen.viewer(
+      title: 'Team Directory',
+      subtitle:
+          'Review registered teams, members, and joined hackathons while judging.',
+    ),
     const ProfileScreen(),
   ];
 
@@ -45,10 +45,8 @@ class _JudgeDashboardState extends State<JudgeDashboard> {
         backgroundColor: Colors.white,
         type: BottomNavigationBarType.fixed,
         items: const [
-          // BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          // BottomNavigationBarItem(icon: Icon(Icons.group), label: "Team"),
-          // BottomNavigationBarItem(icon: Icon(Icons.upload), label: "Submit"),
           BottomNavigationBarItem(icon: Icon(Icons.leaderboard), label: "Board"),
+          BottomNavigationBarItem(icon: Icon(Icons.group), label: "Teams"),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
       ),

@@ -76,6 +76,24 @@ class _JoinTeamScreenState
           .doc(teamCode)
           .get();
 
+      final teamData = doc.data() ?? {};
+      final teamName =
+          teamData['teamName'] ?? 'Team';
+      final members = List<String>.from(
+        teamData['members'] ?? const [],
+      );
+
+      if (members.contains(user.email)) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(
+          const SnackBar(
+            content:
+                Text('You are already in this team.'),
+          ),
+        );
+        return;
+      }
+
       ////////////////////////////////////////////////////////
       /// INVALID CODE
       ////////////////////////////////////////////////////////
@@ -118,7 +136,10 @@ class _JoinTeamScreenState
         context,
         MaterialPageRoute(
           builder: (_) =>
-              const JoinTeamSuccessScreen(),
+              JoinTeamSuccessScreen(
+                teamName: teamName,
+                teamCode: teamCode,
+              ),
         ),
       );
 
