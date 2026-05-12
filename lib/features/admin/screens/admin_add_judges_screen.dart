@@ -505,7 +505,7 @@ class _AdminAddJudgesScreenState
                                                 .trim(),
 
                                         "role":
-                                            "examiner",
+                                            "judge",
 
                                         "specialty":
                                             expertiseController

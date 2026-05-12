@@ -41,7 +41,23 @@ class _AdminDashboardState extends State<AdminDashboard> {
         children: _pages,
       ),
 
-      bottomNavigationBar: Container(
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: _onTap,
+        selectedItemColor: const Color(0xFF4F39F6),
+        unselectedItemColor: const Color(0xFF6B7280),
+        backgroundColor: Colors.white,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded), label: "Dashboard"),
+          BottomNavigationBarItem(icon: Icon(Icons.group), label: "Teams"),
+          BottomNavigationBarItem(icon: Icon(Icons.upload), label: "Hackathons"),
+          BottomNavigationBarItem(icon: Icon(Icons.leaderboard), label: "Board"),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+        ],
+      ),
+
+      /* bottomNavigationBar: Container(
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
 
         decoration: BoxDecoration(
@@ -108,7 +124,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ],
           ),
         ),
-      ),
+      ), */
     );
   }
 }
