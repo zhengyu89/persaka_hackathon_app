@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../board/screens/board_screen.dart';
 import '../../team/screens/team_screen.dart';
 import '../../profile/screens/profile_screen.dart';
+import '../../../shared/widgets/global_bottom_nav_bar.dart';
 
 class JudgeDashboard extends StatefulWidget {
   const JudgeDashboard({super.key});
@@ -12,6 +13,21 @@ class JudgeDashboard extends StatefulWidget {
 
 class _JudgeDashboardState extends State<JudgeDashboard> {
   int _currentIndex = 0;
+
+  static const List<GlobalBottomNavItem> _navItems = [
+    GlobalBottomNavItem(
+      icon: Icons.leaderboard,
+      label: 'Board',
+    ),
+    GlobalBottomNavItem(
+      icon: Icons.group,
+      label: 'Teams',
+    ),
+    GlobalBottomNavItem(
+      icon: Icons.person,
+      label: 'Profile',
+    ),
+  ];
 
   final List<Widget> _pages = [
     const BoardScreen(),
@@ -36,19 +52,10 @@ class _JudgeDashboardState extends State<JudgeDashboard> {
         index: _currentIndex,
         children: _pages,
       ),
-
-      bottomNavigationBar: BottomNavigationBar(
+      bottomNavigationBar: GlobalBottomNavBar(
+        items: _navItems,
         currentIndex: _currentIndex,
         onTap: _onTap,
-        selectedItemColor: const Color(0xFF4F39F6),
-        unselectedItemColor: const Color(0xFF6B7280),
-        backgroundColor: Colors.white,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.leaderboard), label: "Board"),
-          BottomNavigationBarItem(icon: Icon(Icons.group), label: "Teams"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-        ],
       ),
     );
   }

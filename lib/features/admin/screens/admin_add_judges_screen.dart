@@ -160,7 +160,7 @@ class _AdminAddJudgesScreenState
                               children: [
 
                                 Text(
-                                  "Add Examiner",
+                                  "Add Judge",
 
                                   style:
                                       TextStyle(
@@ -505,7 +505,7 @@ class _AdminAddJudgesScreenState
                                                 .trim(),
 
                                         "role":
-                                            "examiner",
+                                            "judge",
 
                                         "specialty":
                                             expertiseController
@@ -828,7 +828,7 @@ class _AdminAddJudgesScreenState
                       height: 28),
 
                   const Text(
-                    "Examiner Added!",
+                    "Judge Added!",
 
                     textAlign:
                         TextAlign.center,

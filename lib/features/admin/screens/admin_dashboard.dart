@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../board/screens/board_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../../team/screens/team_screen.dart';
 import '../../admin/screens/admin_manage_judges_screen.dart';
 import '../../admin/screens/admin_manage_hackathons_screen.dart';
+import '../../../shared/widgets/global_bottom_nav_bar.dart';
 
 class AdminDashboard extends StatefulWidget {
-  const AdminDashboard({super.key});
+  const AdminDashboard({
+    super.key,
+    this.initialIndex = 0,
+  });
+
+  final int initialIndex;
 
   @override
   State<AdminDashboard> createState() => _AdminDashboardState();
@@ -25,6 +32,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
     const ProfileScreen(),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex >= 0 &&
+            widget.initialIndex < _pages.length
+        ? widget.initialIndex
+        : 0;
+  }
+
   void _onTap(int index) {
     setState(() {
       _currentIndex = index;
@@ -40,85 +56,70 @@ class _AdminDashboardState extends State<AdminDashboard> {
         index: _currentIndex,
         children: _pages,
       ),
-
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(28),
-
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
-
-          child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: _onTap,
-
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.white,
-            elevation: 0,
-
-            selectedItemColor: const Color(0xFF4F39F6),
-            unselectedItemColor: const Color(0xFF9CA3AF),
-
-            selectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-            ),
-
-            unselectedLabelStyle: const TextStyle(
-              fontSize: 12,
-            ),
-
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.dashboard_rounded),
-                label: "Dashboard",
-              ),
-
-              BottomNavigationBarItem(
-                icon: Icon(Icons.groups_rounded),
-                label: "Teams",
-              ),
-
-              BottomNavigationBarItem(
-                icon: Icon(Icons.rocket_launch_rounded),
-                label: "Hackathons",
-              ),
-
-              BottomNavigationBarItem(
-                icon: Icon(Icons.emoji_events_outlined),
-                label: "Board",
-              ),
-
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline_rounded),
-                label: "Profile",
-              ),
-            ],
-          ),
-        ),
+      bottomNavigationBar: GlobalBottomNavBar(
+        items: adminBottomNavItems,
+        currentIndex: _currentIndex,
+        onTap: _onTap,
       ),
     );
   }
 }
 
-class AdminDashboardScreen extends StatelessWidget {
+class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
 
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  Widget _buildCollectionCountCard({
+    required String title,
+    required String collection,
+    required IconData icon,
+    required List<Color> gradient,
+  }) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance.collection(collection).snapshots(),
+      builder: (context, snapshot) {
+        final count = snapshot.data?.docs.length;
+        return StatCard(
+          title: title,
+          value: count?.toString() ?? '--',
+          increase: 'Live',
+          icon: icon,
+          gradient: gradient,
+        );
+      },
+    );
+  }
+
+  Widget _buildRoleCountCard({
+    required String title,
+    required String role,
+    required IconData icon,
+    required List<Color> gradient,
+  }) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .where('role', isEqualTo: role)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final count = snapshot.data?.docs.length;
+        return StatCard(
+          title: title,
+          value: count?.toString() ?? '--',
+          increase: 'Live',
+          icon: icon,
+          gradient: gradient,
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     /// STATUS BAR
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -361,9 +362,9 @@ class AdminDashboardScreen extends StatelessWidget {
                     crossAxisSpacing: 14,
                     childAspectRatio: 1.05,
 
-                    children: const [
+                    children: [
 
-                      StatCard(
+                      const StatCard(
                         title: "Participants",
                         value: "156",
                         increase: "+12",
@@ -374,10 +375,9 @@ class AdminDashboardScreen extends StatelessWidget {
                         ],
                       ),
 
-                      StatCard(
+                      _buildCollectionCountCard(
                         title: "Teams",
-                        value: "38",
-                        increase: "+5",
+                        collection: 'teams',
                         icon: Icons.groups_rounded,
                         gradient: [
                           Color(0xFF9333EA),
@@ -385,7 +385,7 @@ class AdminDashboardScreen extends StatelessWidget {
                         ],
                       ),
 
-                      StatCard(
+                      const StatCard(
                         title: "Submissions",
                         value: "24",
                         increase: "+8",
@@ -397,10 +397,9 @@ class AdminDashboardScreen extends StatelessWidget {
                         ],
                       ),
 
-                      StatCard(
+                      _buildRoleCountCard(
                         title: "Judges",
-                        value: "12",
-                        increase: "+2",
+                        role: 'judge',
                         icon: Icons.emoji_events_rounded,
                         gradient: [
                           Color(0xFFD97706),

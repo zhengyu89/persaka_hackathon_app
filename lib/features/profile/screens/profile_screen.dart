@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+
 import '../../../core/services/auth_service.dart';
+import '../../../routes/app_routes.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -90,6 +92,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _logout() async {
+    await _authService.logout();
+    if (!mounted) return;
+
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      AppRoutes.home,
+      (route) => false,
+    );
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -129,7 +141,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ? NetworkImage(_photoURL!) as ImageProvider
                           : null),
                   child: _pickedImage == null && _photoURL == null
-                      ? const Icon(Icons.person, size: 55, color: Colors.deepPurple)
+                      ? const Icon(
+                          Icons.person,
+                          size: 55,
+                          color: Colors.deepPurple,
+                        )
                       : null,
                 ),
               ),
@@ -210,7 +226,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   child: _isSaving
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Save Changes', style: TextStyle(fontSize: 16)),
+                      : const Text(
+                          'Save Changes',
+                          style: TextStyle(fontSize: 16),
+                        ),
                 ),
               ),
 
@@ -221,9 +240,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: double.infinity,
                 height: 50,
                 child: OutlinedButton(
-                  onPressed: () async {
-                    await _authService.logout();
-                  },
+                  onPressed: _logout,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.red,
                     side: const BorderSide(color: Colors.red),
@@ -231,7 +248,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text('Logout', style: TextStyle(fontSize: 16)),                ),
+                  child: const Text(
+                    'Logout',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
               ),
             ],
           ),

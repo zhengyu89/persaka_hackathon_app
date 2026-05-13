@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../board/screens/board_screen.dart';
-import '../../profile/screens/profile_screen.dart';
+import '../../../shared/widgets/global_bottom_nav_bar.dart';
 
 import 'admin_dashboard.dart';
 import 'admin_add_judges_screen.dart';
@@ -19,7 +18,7 @@ class AssignJudgesScreen extends StatefulWidget {
 class _AssignJudgesScreenState
     extends State<AssignJudgesScreen> {
 
-  int _currentIndex = 1;
+  final int _currentIndex = 0;
 
   /// FIREBASE JUDGES
   List<Map<String, dynamic>> judges = [];
@@ -32,7 +31,7 @@ class _AssignJudgesScreenState
             .collection("users")
             .where(
               "role",
-              isEqualTo: "examiner",
+              isEqualTo: "judge",
             )
             .get();
 
@@ -67,58 +66,14 @@ class _AssignJudgesScreenState
   }
 
   void _onBottomTap(int index) {
-
-    setState(() {
-      _currentIndex = index;
-    });
-
-    /// DASHBOARD
-    if (index == 0) {
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              const AdminDashboard(),
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AdminDashboard(
+          initialIndex: index,
         ),
-      );
-    }
-
-    /// JUDGES
-    if (index == 1) {
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              const AssignJudgesScreen(),
-        ),
-      );
-    }
-
-    /// BOARD
-    if (index == 2) {
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              const BoardScreen(),
-        ),
-      );
-    }
-
-    /// PROFILE
-    if (index == 3) {
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              const ProfileScreen(),
-        ),
-      );
-    }
+      ),
+    );
   }
 
   @override
@@ -140,88 +95,10 @@ class _AssignJudgesScreenState
       /// =========================
       /// BOTTOM NAV
       /// =========================
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.fromLTRB(
-          16,
-          0,
-          16,
-          16,
-        ),
-
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius:
-              BorderRadius.circular(28),
-
-          boxShadow: [
-            BoxShadow(
-              color:
-                  Colors.black.withOpacity(0.06),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-
-        child: ClipRRect(
-          borderRadius:
-              BorderRadius.circular(28),
-
-          child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: _onBottomTap,
-
-            type:
-                BottomNavigationBarType.fixed,
-
-            backgroundColor: Colors.white,
-            elevation: 0,
-
-            selectedItemColor:
-                const Color(0xFF4F39F6),
-
-            unselectedItemColor:
-                const Color(0xFF9CA3AF),
-
-            selectedLabelStyle:
-                const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-            ),
-
-            unselectedLabelStyle:
-                const TextStyle(
-              fontSize: 12,
-            ),
-
-            items: const [
-
-              BottomNavigationBarItem(
-                icon: Icon(
-                    Icons.dashboard_rounded),
-                label: "Dashboard",
-              ),
-
-              BottomNavigationBarItem(
-                icon:
-                    Icon(Icons.gavel_rounded),
-                label: "Judges",
-              ),
-
-              BottomNavigationBarItem(
-                icon: Icon(
-                    Icons.emoji_events_outlined),
-                label: "Board",
-              ),
-
-              BottomNavigationBarItem(
-                icon: Icon(
-                    Icons.person_outline_rounded),
-                label: "Profile",
-              ),
-            ],
-          ),
-        ),
+      bottomNavigationBar: GlobalBottomNavBar(
+        items: adminBottomNavItems,
+        currentIndex: _currentIndex,
+        onTap: _onBottomTap,
       ),
 
       body: SingleChildScrollView(
@@ -340,7 +217,7 @@ class _AssignJudgesScreenState
                                     height: 4),
 
                                 Text(
-                                  "${judges.length} examiners registered",
+                                  "${judges.length} judges registered",
 
                                   style:
                                       const TextStyle(
@@ -427,7 +304,7 @@ class _AssignJudgesScreenState
                               true,
 
                           barrierLabel:
-                              "Add Examiner",
+                              "Add Judge",
 
                           barrierColor:
                               Colors.black
@@ -493,7 +370,7 @@ class _AssignJudgesScreenState
                               .showSnackBar(
                             const SnackBar(
                               content: Text(
-                                "Examiner added successfully",
+                                "Judge added successfully",
                               ),
                             ),
                           );
@@ -522,7 +399,7 @@ class _AssignJudgesScreenState
                       ),
 
                       label: const Text(
-                        "Add New Examiner",
+                        "Add New Judge",
 
                         style: TextStyle(
                           color: Colors.white,
@@ -536,7 +413,7 @@ class _AssignJudgesScreenState
                   const SizedBox(height: 24),
 
                   const Text(
-                    "All Examiners",
+                    "All Judges",
 
                     style: TextStyle(
                       fontSize: 18,
