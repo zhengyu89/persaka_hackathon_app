@@ -29,11 +29,10 @@ class AuthService {
     final user = credential.user;
 
     if (user != null) {
-      await _firestore.collection('users').doc(user.uid).set({
-        'email': email,
-        'role': 'participant', // DEFAULT ROLE
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      await _ensureUserDocument(
+        user,
+        fallbackEmail: email.trim(),
+      );
     }
 
     return user;
@@ -44,20 +43,20 @@ class AuthService {
       email: email,
       password: password,
     );
-    return credential.user;
+    final user = credential.user;
+
+    if (user != null) {
+      await _ensureUserDocument(
+        user,
+        fallbackEmail: email.trim(),
+      );
+    }
+
+    return user;
   }
 
   Future<String> getUserRole(User user) async {
-    // Hardcoded Admin
-    const adminEmails = [
-      'danishekhsan@gmail.com', // Aiman (testing for admin role)
-      'admin2@gmail.com',
-      'admin3@gmail.com',
-      'h58176801@gmail.com', // Aidil
-      'tanzhengyutan@gmail.com' // Tan Zheng Yu
-    ];
-
-    if (adminEmails.contains(user.email)) {
+    if (_isAdminEmail(user.email)) {
       return 'admin';
     }
 
@@ -94,18 +93,7 @@ class AuthService {
       final userCredential = await _auth.signInWithCredential(credential);
       final user = userCredential.user;
       if (user != null) {
-        final doc = await _firestore
-            .collection('users')
-            .doc(user.uid)
-            .get();
-
-        if (!doc.exists) {
-          await _firestore.collection('users').doc(user.uid).set({
-            'email': user.email,
-            'role': 'participant',
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-        }
+        await _ensureUserDocument(user);
       }
       return user;
     } on FirebaseAuthException catch (error) {
@@ -178,7 +166,7 @@ class AuthService {
         .collection('users')
         .doc(user.uid)
         .set({
-          'displayName': displayName,
+          'name': displayName,
           'phoneNumber': phoneNumber,
           'email': user.email,
           if (photoURL != null) 'photoURL': photoURL,
@@ -195,6 +183,46 @@ class AuthService {
         .get();
 
     return doc.data();
+  }
+
+  Future<void> _ensureUserDocument(
+    User user, {
+    String? fallbackEmail,
+  }) async {
+    final normalizedEmail = (user.email ?? fallbackEmail ?? '').trim();
+    final role = _isAdminEmail(normalizedEmail) ? 'admin' : 'participant';
+    final docRef = _firestore.collection('users').doc(user.uid);
+    final doc = await docRef.get();
+
+    if (!doc.exists) {
+      await docRef.set({
+        'createdAt': FieldValue.serverTimestamp(),
+        'email': normalizedEmail,
+        'name': user.displayName ?? '',
+        'role': role,
+      });
+      return;
+    }
+
+    if (role == 'admin' && doc.data()?['role'] != 'admin') {
+      await docRef.set({
+        'email': normalizedEmail,
+        'name': doc.data()?['name'] ?? user.displayName ?? '',
+        'role': 'admin',
+      }, SetOptions(merge: true));
+    }
+  }
+
+  bool _isAdminEmail(String? email) {
+    const adminEmails = [
+      'danishekhsan@gmail.com', // Aiman (testing for admin role)
+      'admin2@gmail.com',
+      'admin3@gmail.com',
+      'h58176801@gmail.com', // Aidil
+      'tanzhengyutan@gmail.com', // Tan Zheng Yu
+    ];
+
+    return adminEmails.contains(email?.trim());
   }
 }
 

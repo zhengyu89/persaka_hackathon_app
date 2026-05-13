@@ -37,20 +37,22 @@ class _AssignJudgesScreenState
 
     judges =
         snapshot.docs.map((doc) {
+      final data =
+          doc.data();
 
       return {
 
         "name":
-            doc["name"],
+            data["name"] ?? "",
 
         "email":
-            doc["email"],
+            data["email"] ?? "",
 
         "specialty":
-            doc["specialty"],
+            data["specialty"] ?? "General",
 
         "teams":
-            doc["teams"],
+            data["teams"] ?? 0,
       };
 
     }).toList();

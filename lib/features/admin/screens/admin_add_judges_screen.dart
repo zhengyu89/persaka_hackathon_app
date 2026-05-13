@@ -490,9 +490,9 @@ class _AdminAddJudgesScreenState
                                               "users")
                                           .doc(uid)
                                           .set({
-
-                                        "uid":
-                                            uid,
+                                        "createdAt":
+                                            FieldValue
+                                                .serverTimestamp(),
 
                                         "name":
                                             nameController
@@ -517,13 +517,6 @@ class _AdminAddJudgesScreenState
 
                                         "teams":
                                             0,
-
-                                        "temporaryPassword":
-                                            true,
-
-                                        "createdAt":
-                                            FieldValue
-                                                .serverTimestamp(),
                                       });
 
                                       /// SIGN OUT TEMP USER

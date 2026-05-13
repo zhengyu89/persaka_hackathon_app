@@ -39,7 +39,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) return;
     setState(() {
       _email = user?.email ?? '';
-      _nameController.text = data?['displayName'] ?? user?.displayName ?? '';
+      _nameController.text =
+          data?['name'] ?? data?['displayName'] ?? user?.displayName ?? '';
       _phoneController.text = data?['phoneNumber'] ?? '';
       _photoURL = data?['photoURL'];
       _role = data?['role'] ?? 'participant';

@@ -14,7 +14,8 @@ In `AuthService.getUserRole(...)`, the app checks whether the signed-in user's e
 
 That means:
 
-- a newly registered user is still saved to Firestore with role `participant`
+- a newly registered user is saved to Firestore with role `admin` if their email is listed in `adminEmails`
+- all other newly registered users are saved with role `participant`
 - changing the Firestore `role` field to `admin` is not enough if the email is not in the hardcoded admin list
 - the account email must match an email listed in `adminEmails`
 
@@ -24,7 +25,7 @@ When a user registers:
 
 - Firebase Authentication creates the account
 - a Firestore document is created in `users/{uid}`
-- the saved role defaults to `participant`
+- the saved role is `admin` for emails in `adminEmails`, otherwise `participant`
 
 When a user logs in:
 
@@ -131,14 +132,13 @@ users/{uid}
 You should usually see fields like:
 
 ```text
-email: newadmin@example.com
-role: participant
 createdAt: <server timestamp>
+email: newadmin@example.com
+name:
+role: admin
 ```
 
-This is expected.
-
-Even if Firestore still says `participant`, the app will still treat the user as admin if the email is in the hardcoded admin list.
+If the email is listed in `adminEmails`, the saved Firestore role should also be `admin`.
 
 ## Firebase Console Checks
 
