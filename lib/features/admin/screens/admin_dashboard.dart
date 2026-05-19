@@ -4,16 +4,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../board/screens/board_screen.dart';
 import '../../profile/screens/profile_screen.dart';
+import '../../submit/screens/submissions_review_screen.dart';
 import '../../team/screens/team_screen.dart';
 import '../../admin/screens/admin_manage_judges_screen.dart';
 import '../../admin/screens/admin_manage_hackathons_screen.dart';
 import '../../../shared/widgets/global_bottom_nav_bar.dart';
 
 class AdminDashboard extends StatefulWidget {
-  const AdminDashboard({
-    super.key,
-    this.initialIndex = 0,
-  });
+  const AdminDashboard({super.key, this.initialIndex = 0});
 
   final int initialIndex;
 
@@ -35,10 +33,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialIndex >= 0 &&
-            widget.initialIndex < _pages.length
-        ? widget.initialIndex
-        : 0;
+    _currentIndex =
+        widget.initialIndex >= 0 && widget.initialIndex < _pages.length
+            ? widget.initialIndex
+            : 0;
   }
 
   void _onTap(int index) {
@@ -52,10 +50,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
 
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: GlobalBottomNavBar(
         items: adminBottomNavItems,
         currentIndex: _currentIndex,
@@ -101,10 +96,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     required List<Color> gradient,
   }) {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .where('role', isEqualTo: role)
-          .snapshots(),
+      stream:
+          FirebaseFirestore.instance
+              .collection('users')
+              .where('role', isEqualTo: role)
+              .snapshots(),
       builder: (context, snapshot) {
         final count = snapshot.data?.docs.length;
         return StatCard(
@@ -139,7 +135,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
         child: Column(
           children: [
-
             /// PURPLE HEADER
             Container(
               width: double.infinity,
@@ -165,27 +160,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 bottom: false,
 
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    16,
-                    18,
-                    16,
-                    26,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 26),
 
                   child: Column(
                     children: [
-
                       /// HEADER ROW
                       Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-
                           Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: const [
-
                               Text(
                                 "Admin Dashboard 👨‍💼",
                                 style: TextStyle(
@@ -211,8 +196,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             padding: const EdgeInsets.all(14),
 
                             decoration: BoxDecoration(
-                              color:
-                                  Colors.white.withOpacity(0.15),
+                              color: Colors.white.withOpacity(0.15),
                               shape: BoxShape.circle,
                             ),
 
@@ -238,19 +222,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ],
                           ),
 
-                          borderRadius:
-                              BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(24),
                         ),
 
                         child: Row(
                           children: [
-
                             Container(
                               width: 56,
                               height: 56,
 
-                              decoration:
-                                  const BoxDecoration(
+                              decoration: const BoxDecoration(
                                 color: Colors.white,
                                 shape: BoxShape.circle,
                               ),
@@ -258,8 +239,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               child: const Center(
                                 child: Text(
                                   "👑",
-                                  style:
-                                      TextStyle(fontSize: 24),
+                                  style: TextStyle(fontSize: 24),
                                 ),
                               ),
                             ),
@@ -268,16 +248,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-
                                   const Text(
                                     "Your Role",
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontWeight:
-                                          FontWeight.w600,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
 
@@ -285,13 +262,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
                                   Row(
                                     children: const [
-
                                       Icon(
-                                        Icons
-                                            .admin_panel_settings,
+                                        Icons.admin_panel_settings,
                                         size: 14,
-                                        color:
-                                            Color(0xFFE0E7FF),
+                                        color: Color(0xFFE0E7FF),
                                       ),
 
                                       SizedBox(width: 4),
@@ -299,8 +273,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                       Text(
                                         "Administrator",
                                         style: TextStyle(
-                                          color:
-                                              Color(0xFFE0E7FF),
+                                          color: Color(0xFFE0E7FF),
                                           fontSize: 12,
                                         ),
                                       ),
@@ -311,16 +284,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
 
                             Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.end,
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: const [
-
                                 Text(
                                   "Day 1 of 2",
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontWeight:
-                                        FontWeight.w600,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
 
@@ -329,8 +299,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 Text(
                                   "36h remaining",
                                   style: TextStyle(
-                                    color:
-                                        Color(0xFFE0E7FF),
+                                    color: Color(0xFFE0E7FF),
                                     fontSize: 12,
                                   ),
                                 ),
@@ -351,60 +320,43 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
               child: Column(
                 children: [
-
                   /// STATS GRID
                   GridView.count(
                     crossAxisCount: 2,
                     shrinkWrap: true,
-                    physics:
-                        const NeverScrollableScrollPhysics(),
+                    physics: const NeverScrollableScrollPhysics(),
                     mainAxisSpacing: 14,
                     crossAxisSpacing: 14,
                     childAspectRatio: 1.05,
 
                     children: [
-
                       const StatCard(
                         title: "Participants",
                         value: "156",
                         increase: "+12",
                         icon: Icons.people_alt_rounded,
-                        gradient: [
-                          Color(0xFF2563EB),
-                          Color(0xFF3B82F6),
-                        ],
+                        gradient: [Color(0xFF2563EB), Color(0xFF3B82F6)],
                       ),
 
                       _buildCollectionCountCard(
                         title: "Teams",
                         collection: 'teams',
                         icon: Icons.groups_rounded,
-                        gradient: [
-                          Color(0xFF9333EA),
-                          Color(0xFFC026D3),
-                        ],
+                        gradient: [Color(0xFF9333EA), Color(0xFFC026D3)],
                       ),
 
-                      const StatCard(
+                      _buildCollectionCountCard(
                         title: "Submissions",
-                        value: "24",
-                        increase: "+8",
-                        icon:
-                            Icons.description_rounded,
-                        gradient: [
-                          Color(0xFF16A34A),
-                          Color(0xFF22C55E),
-                        ],
+                        collection: 'submissions',
+                        icon: Icons.description_rounded,
+                        gradient: [Color(0xFF16A34A), Color(0xFF22C55E)],
                       ),
 
                       _buildRoleCountCard(
                         title: "Judges",
                         role: 'judge',
                         icon: Icons.emoji_events_rounded,
-                        gradient: [
-                          Color(0xFFD97706),
-                          Color(0xFFF59E0B),
-                        ],
+                        gradient: [Color(0xFFD97706), Color(0xFFF59E0B)],
                       ),
                     ],
                   ),
@@ -412,84 +364,78 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   const SizedBox(height: 24),
 
                   /// QUICK ACTIONS
-sectionTitle("Quick Actions"),
+                  sectionTitle("Quick Actions"),
 
-const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-GridView.count(
-  crossAxisCount: 2,
-  shrinkWrap: true,
-  physics:
-      const NeverScrollableScrollPhysics(),
-  crossAxisSpacing: 14,
-  mainAxisSpacing: 14,
-  childAspectRatio: 1.08,
+                  GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 14,
+                    childAspectRatio: 1.08,
 
-  children: [
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => const AdminManageHackathonsScreen(),
+                            ),
+                          );
+                        },
+                        child: const ActionCard(
+                          title: "Add\nHackathon",
+                          icon: Icons.rocket_launch_rounded,
+                          gradient: [Color(0xFF4F46E5), Color(0xFF6366F1)],
+                        ),
+                      ),
 
-    GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const AdminManageHackathonsScreen(),
-          ),
-        );
-      },
-      child: const ActionCard(
-        title: "Add\nHackathon",
-        icon: Icons.rocket_launch_rounded,
-        gradient: [
-          Color(0xFF4F46E5),
-          Color(0xFF6366F1),
-        ],
-      ),
-    ),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AssignJudgesScreen(),
+                            ),
+                          );
+                        },
 
-    GestureDetector(
-      onTap: () {
+                        child: const ActionCard(
+                          title: "Manage Judges",
+                          icon: Icons.groups_rounded,
 
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) =>
-                const AssignJudgesScreen(),
-          ),
-        );
-      },
+                          gradient: [Color(0xFFA21CAF), Color(0xFFD946EF)],
+                        ),
+                      ),
 
-      child: const ActionCard(
-        title: "Manage Judges",
-        icon: Icons.groups_rounded,
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => const SubmissionsReviewScreen.admin(),
+                            ),
+                          );
+                        },
+                        child: const ActionCard(
+                          title: "View Submissions",
+                          icon: Icons.description_outlined,
+                          gradient: [Color(0xFF2563EB), Color(0xFF3B82F6)],
+                        ),
+                      ),
 
-        gradient: [
-          Color(0xFFA21CAF),
-          Color(0xFFD946EF),
-        ],
-      ),
-    ),
-
-    const ActionCard(
-      title: "View Submissions",
-      icon:
-          Icons.description_outlined,
-      gradient: [
-        Color(0xFF2563EB),
-        Color(0xFF3B82F6),
-      ],
-    ),
-
-    const ActionCard(
-      title: "Schedule Event",
-      icon:
-          Icons.calendar_month_rounded,
-      gradient: [
-        Color(0xFF16A34A),
-        Color(0xFF22C55E),
-      ],
-    ),
-  ],
-),
+                      const ActionCard(
+                        title: "Schedule Event",
+                        icon: Icons.calendar_month_rounded,
+                        gradient: [Color(0xFF16A34A), Color(0xFF22C55E)],
+                      ),
+                    ],
+                  ),
 
                   const SizedBox(height: 24),
 
@@ -500,8 +446,7 @@ GridView.count(
 
                   const TaskCard(
                     title: "Team Registration",
-                    subtitle:
-                        "Code Warriors needs approval",
+                    subtitle: "Code Warriors needs approval",
                     time: "5 min ago",
                   ),
 
@@ -509,8 +454,7 @@ GridView.count(
 
                   const TaskCard(
                     title: "Submission Review",
-                    subtitle:
-                        "AI Innovators submitted project",
+                    subtitle: "AI Innovators submitted project",
                     time: "12 min ago",
                   ),
 
@@ -518,8 +462,7 @@ GridView.count(
 
                   const TaskCard(
                     title: "Judge Assignment",
-                    subtitle:
-                        "2 teams need judges assigned",
+                    subtitle: "2 teams need judges assigned",
                     time: "30 min ago",
                   ),
                 ],
@@ -584,7 +527,6 @@ class StatCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           Container(
             width: 44,
             height: 44,
@@ -594,11 +536,7 @@ class StatCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
             ),
 
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 22,
-            ),
+            child: Icon(icon, color: Colors.white, size: 22),
           ),
 
           const Spacer(),
@@ -615,23 +553,15 @@ class StatCard extends StatelessWidget {
           const SizedBox(height: 4),
 
           Row(
-            mainAxisAlignment:
-                MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-
               Text(
                 title,
-                style: const TextStyle(
-                  color: Color(0xFF4B5563),
-                  fontSize: 13,
-                ),
+                style: const TextStyle(color: Color(0xFF4B5563), fontSize: 13),
               ),
 
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
 
                 decoration: BoxDecoration(
                   color: const Color(0xFFDCFCE7),
@@ -688,7 +618,6 @@ class ActionCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           Container(
             width: 42,
             height: 42,
@@ -698,10 +627,7 @@ class ActionCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
             ),
 
-            child: Icon(
-              icon,
-              color: Colors.white,
-            ),
+            child: Icon(icon, color: Colors.white),
           ),
 
           const Spacer(),
@@ -753,7 +679,6 @@ class TaskCard extends StatelessWidget {
 
       child: Row(
         children: [
-
           Container(
             width: 48,
             height: 48,
@@ -773,10 +698,8 @@ class TaskCard extends StatelessWidget {
 
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
                 Text(
                   title,
                   style: const TextStyle(
@@ -809,10 +732,7 @@ class TaskCard extends StatelessWidget {
           ),
 
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 8,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
 
             decoration: BoxDecoration(
               color: const Color(0xFFFEF3C7),
@@ -836,10 +756,7 @@ class TaskCard extends StatelessWidget {
 class PlaceholderScreen extends StatelessWidget {
   final String title;
 
-  const PlaceholderScreen({
-    super.key,
-    required this.title,
-  });
+  const PlaceholderScreen({super.key, required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -849,10 +766,7 @@ class PlaceholderScreen extends StatelessWidget {
       body: Center(
         child: Text(
           title,
-          style: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
         ),
       ),
     );

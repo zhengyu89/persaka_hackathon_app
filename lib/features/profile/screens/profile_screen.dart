@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../../core/services/auth_service.dart';
+import '../../../routes/app_routes.dart';
 import '../../../shared/widgets/participant_ui.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -88,39 +89,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _logout() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Log out',
-          style: TextStyle(
-            color: ParticipantPalette.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        content: const Text(
-          'Are you sure you want to log out?',
-          style: TextStyle(color: ParticipantPalette.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: ParticipantPalette.danger,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+      builder:
+          (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text(
+              'Log out',
+              style: TextStyle(
+                color: ParticipantPalette.textPrimary,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            child: const Text('Log out'),
+            content: const Text(
+              'Are you sure you want to log out?',
+              style: TextStyle(color: ParticipantPalette.textSecondary),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: ParticipantPalette.danger,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Log out'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
-    if (confirmed == true) await _authService.logout();
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      await _authService.logout();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logout warning: ${e.toString()}'),
+          backgroundColor: ParticipantPalette.warning,
+        ),
+      );
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.home,
+      (route) => false,
+    );
   }
 
   @override
@@ -205,11 +233,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         GestureDetector(
-                          onTap: () =>
-                              setState(() => _isEditing = !_isEditing),
+                          onTap: () => setState(() => _isEditing = !_isEditing),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 8),
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.18),
                               borderRadius: BorderRadius.circular(18),
@@ -217,9 +246,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             child: Row(
                               children: [
                                 Icon(
-                                  _isEditing
-                                      ? Icons.close
-                                      : Icons.edit_rounded,
+                                  _isEditing ? Icons.close : Icons.edit_rounded,
                                   color: Colors.white,
                                   size: 16,
                                 ),
@@ -247,22 +274,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           CircleAvatar(
                             radius: 46,
                             backgroundColor: Colors.white.withOpacity(0.22),
-                            backgroundImage: _pickedImage != null
-                                ? FileImage(_pickedImage!)
-                                : (_photoURL != null
-                                    ? NetworkImage(_photoURL!)
-                                        as ImageProvider
-                                    : null),
-                            child: _pickedImage == null && _photoURL == null
-                                ? Text(
-                                    _initials,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  )
-                                : null,
+                            backgroundImage:
+                                _pickedImage != null
+                                    ? FileImage(_pickedImage!)
+                                    : (_photoURL != null
+                                        ? NetworkImage(_photoURL!)
+                                            as ImageProvider
+                                        : null),
+                            child:
+                                _pickedImage == null && _photoURL == null
+                                    ? Text(
+                                      _initials,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    )
+                                    : null,
                           ),
                           if (_isEditing)
                             Positioned(
@@ -317,7 +346,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // Role badge
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 6),
+                        horizontal: 14,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.18),
                         borderRadius: BorderRadius.circular(999),
@@ -348,28 +379,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         ParticipantSectionHeader(
                           title: 'Personal Details',
-                          subtitle: _isEditing
-                              ? 'Update your information below.'
-                              : 'Your registered account details.',
+                          subtitle:
+                              _isEditing
+                                  ? 'Update your information below.'
+                                  : 'Your registered account details.',
                         ),
 
                         // Full name
                         _isEditing
                             ? _buildEditField(
-                                controller: _nameController,
-                                label: 'Full Name',
-                                icon: Icons.person_outline_rounded,
-                                validator: (v) => (v == null || v.isEmpty)
-                                    ? 'Please enter your name'
-                                    : null,
-                              )
+                              controller: _nameController,
+                              label: 'Full Name',
+                              icon: Icons.person_outline_rounded,
+                              validator:
+                                  (v) =>
+                                      (v == null || v.isEmpty)
+                                          ? 'Please enter your name'
+                                          : null,
+                            )
                             : _buildReadRow(
-                                icon: Icons.person_outline_rounded,
-                                label: 'Full Name',
-                                value: _nameController.text.isEmpty
-                                    ? '—'
-                                    : _nameController.text,
-                              ),
+                              icon: Icons.person_outline_rounded,
+                              label: 'Full Name',
+                              value:
+                                  _nameController.text.isEmpty
+                                      ? '—'
+                                      : _nameController.text,
+                            ),
 
                         const SizedBox(height: 14),
 
@@ -385,21 +420,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         // Phone
                         _isEditing
                             ? _buildEditField(
-                                controller: _phoneController,
-                                label: 'Phone Number',
-                                icon: Icons.phone_outlined,
-                                keyboardType: TextInputType.phone,
-                                validator: (v) => (v == null || v.isEmpty)
-                                    ? 'Please enter your phone number'
-                                    : null,
-                              )
+                              controller: _phoneController,
+                              label: 'Phone Number',
+                              icon: Icons.phone_outlined,
+                              keyboardType: TextInputType.phone,
+                              validator:
+                                  (v) =>
+                                      (v == null || v.isEmpty)
+                                          ? 'Please enter your phone number'
+                                          : null,
+                            )
                             : _buildReadRow(
-                                icon: Icons.phone_outlined,
-                                label: 'Phone',
-                                value: _phoneController.text.isEmpty
-                                    ? '—'
-                                    : _phoneController.text,
-                              ),
+                              icon: Icons.phone_outlined,
+                              label: 'Phone',
+                              value:
+                                  _phoneController.text.isEmpty
+                                      ? '—'
+                                      : _phoneController.text,
+                            ),
 
                         // Save button — edit mode only
                         if (_isEditing) ...[
@@ -417,22 +455,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   borderRadius: BorderRadius.circular(14),
                                 ),
                               ),
-                              child: _isSaving
-                                  ? const SizedBox(
-                                      width: 22,
-                                      height: 22,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2.5,
+                              child:
+                                  _isSaving
+                                      ? const SizedBox(
+                                        width: 22,
+                                        height: 22,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2.5,
+                                        ),
+                                      )
+                                      : const Text(
+                                        'Save Changes',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
-                                    )
-                                  : const Text(
-                                      'Save Changes',
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
                             ),
                           ),
                         ],
@@ -469,12 +508,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       label: const Text(
                         'Log Out',
                         style: TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w700),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: ParticipantPalette.danger,
                         side: const BorderSide(
-                            color: ParticipantPalette.danger, width: 1.5),
+                          color: ParticipantPalette.danger,
+                          width: 1.5,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -555,12 +598,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(
-            color: ParticipantPalette.textSecondary, fontSize: 13),
+          color: ParticipantPalette.textSecondary,
+          fontSize: 13,
+        ),
         prefixIcon: Icon(icon, color: ParticipantPalette.primary, size: 20),
         filled: true,
         fillColor: ParticipantPalette.primary.withOpacity(0.05),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: ParticipantPalette.border),
@@ -568,7 +615,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(
-              color: ParticipantPalette.primary, width: 1.5),
+            color: ParticipantPalette.primary,
+            width: 1.5,
+          ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -577,7 +626,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(
-              color: ParticipantPalette.danger, width: 1.5),
+            color: ParticipantPalette.danger,
+            width: 1.5,
+          ),
         ),
       ),
     );

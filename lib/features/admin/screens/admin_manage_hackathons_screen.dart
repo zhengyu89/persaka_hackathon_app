@@ -1,5 +1,5 @@
-import 'dart:typed_data';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../shared/widgets/hackathon_cover.dart';
+import '../../submit/models/submission_models.dart';
+import '../../submit/utils/submission_validators.dart';
 
 class AdminManageHackathonsScreen extends StatelessWidget {
   const AdminManageHackathonsScreen({super.key});
@@ -19,9 +21,7 @@ class AdminManageHackathonsScreen extends StatelessWidget {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (_) => const AdminAddHackathonScreen(),
-            ),
+            MaterialPageRoute(builder: (_) => const AdminAddHackathonScreen()),
           );
         },
         backgroundColor: const Color(0xFF4F39F6),
@@ -30,16 +30,15 @@ class AdminManageHackathonsScreen extends StatelessWidget {
         label: const Text('Add Hackathon'),
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance
-            .collection('hackathons')
-            .snapshots(),
+        stream: FirebaseFirestore.instance.collection('hackathons').snapshots(),
         builder: (context, snapshot) {
-          final hackathons = snapshot.data?.docs.toList() ?? [];
+          final hackathons =
+              snapshot.data?.docs.map(HackathonSummary.fromDocument).toList() ??
+              <HackathonSummary>[];
           hackathons.sort((a, b) {
-            final aTime = a.data()['createdAt'] as Timestamp?;
-            final bTime = b.data()['createdAt'] as Timestamp?;
-            return (bTime?.millisecondsSinceEpoch ?? 0)
-                .compareTo(aTime?.millisecondsSinceEpoch ?? 0);
+            return (b.createdAt?.millisecondsSinceEpoch ?? 0).compareTo(
+              a.createdAt?.millisecondsSinceEpoch ?? 0,
+            );
           });
 
           return CustomScrollView(
@@ -110,7 +109,7 @@ class AdminManageHackathonsScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Create new hackathons with a description and poster, then let team leaders register from the team workspace.',
+                        'Create hackathons, configure participant Google Forms, and keep organiser review links ready for judges.',
                         style: TextStyle(
                           color: Color(0xFFEAE7FF),
                           fontSize: 14,
@@ -124,35 +123,32 @@ class AdminManageHackathonsScreen extends StatelessWidget {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 18, 16, 120),
                 sliver: SliverList(
-                  delegate: SliverChildListDelegate(
-                    [
-                      if (snapshot.connectionState == ConnectionState.waiting)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 80),
-                          child: Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        )
-                      else if (snapshot.hasError)
-                        const _AdminStateCard(
-                          title: 'Could not load hackathons',
-                          subtitle:
-                              'Please try again once Firestore is reachable.',
-                          icon: Icons.error_outline_rounded,
-                        )
-                      else if (hackathons.isEmpty)
-                        const _AdminStateCard(
-                          title: 'No hackathons yet',
-                          subtitle:
-                              'Create the first event to make it available for team leaders.',
-                          icon: Icons.event_busy_outlined,
-                        )
-                      else
-                        ...hackathons.map(
-                          (doc) => _HackathonAdminCard(doc: doc),
-                        ),
-                    ],
-                  ),
+                  delegate: SliverChildListDelegate([
+                    if (snapshot.connectionState == ConnectionState.waiting)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 80),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (snapshot.hasError)
+                      const _AdminStateCard(
+                        title: 'Could not load hackathons',
+                        subtitle:
+                            'Please try again once Firestore is reachable.',
+                        icon: Icons.error_outline_rounded,
+                      )
+                    else if (hackathons.isEmpty)
+                      const _AdminStateCard(
+                        title: 'No hackathons yet',
+                        subtitle:
+                            'Create the first event to make it available for team leaders.',
+                        icon: Icons.event_busy_outlined,
+                      )
+                    else
+                      ...hackathons.map(
+                        (hackathon) =>
+                            _HackathonAdminCard(hackathon: hackathon),
+                      ),
+                  ]),
                 ),
               ),
             ],
@@ -164,29 +160,51 @@ class AdminManageHackathonsScreen extends StatelessWidget {
 }
 
 class AdminAddHackathonScreen extends StatefulWidget {
-  const AdminAddHackathonScreen({super.key});
+  const AdminAddHackathonScreen({super.key, this.hackathon});
+
+  final HackathonSummary? hackathon;
 
   @override
   State<AdminAddHackathonScreen> createState() =>
       _AdminAddHackathonScreenState();
 }
 
-class _AdminAddHackathonScreenState
-    extends State<AdminAddHackathonScreen> {
-  final TextEditingController _titleController =
+class _AdminAddHackathonScreenState extends State<AdminAddHackathonScreen> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _participantFormUrlController =
       TextEditingController();
-  final TextEditingController _descriptionController =
-      TextEditingController();
+  final TextEditingController _reviewUrlController = TextEditingController();
   final ImagePicker _imagePicker = ImagePicker();
 
   Uint8List? _selectedImageBytes;
   String _imageBase64 = '';
   bool _isSaving = false;
 
+  bool get _isEditing => widget.hackathon != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final hackathon = widget.hackathon;
+    if (hackathon == null) {
+      return;
+    }
+
+    _titleController.text = hackathon.title;
+    _descriptionController.text = hackathon.description;
+    _participantFormUrlController.text = hackathon.participantFormUrl;
+    _reviewUrlController.text = hackathon.reviewUrl;
+    _imageBase64 = hackathon.imageBase64;
+  }
+
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _participantFormUrlController.dispose();
+    _reviewUrlController.dispose();
     super.dispose();
   }
 
@@ -214,16 +232,8 @@ class _AdminAddHackathonScreenState
     });
   }
 
-  Future<void> _createHackathon() async {
-    final title = _titleController.text.trim();
-    final description = _descriptionController.text.trim();
-
-    if (title.isEmpty || description.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter both title and description.'),
-        ),
-      );
+  Future<void> _createOrUpdateHackathon() async {
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
@@ -231,23 +241,40 @@ class _AdminAddHackathonScreenState
       _isSaving = true;
     });
 
+    final payload = <String, dynamic>{
+      'title': _titleController.text.trim(),
+      'description': _descriptionController.text.trim(),
+      'imageBase64': _imageBase64,
+      'participantFormUrl': SubmissionValidators.normalizeUrl(
+        _participantFormUrlController.text,
+      ),
+      'reviewUrl': SubmissionValidators.normalizeUrl(_reviewUrlController.text),
+    };
+
     try {
-      await FirebaseFirestore.instance.collection('hackathons').add({
-        'title': title,
-        'description': description,
-        'imageBase64': _imageBase64,
-        'registeredTeams': <String>[],
-        'createdAt': FieldValue.serverTimestamp(),
-        'createdBy': FirebaseAuth.instance.currentUser?.email,
-      });
+      if (_isEditing) {
+        await FirebaseFirestore.instance
+            .collection('hackathons')
+            .doc(widget.hackathon!.id)
+            .set(payload, SetOptions(merge: true));
+      } else {
+        payload['registeredTeams'] = <String>[];
+        payload['createdAt'] = FieldValue.serverTimestamp();
+        payload['createdBy'] = FirebaseAuth.instance.currentUser?.email;
+        await FirebaseFirestore.instance.collection('hackathons').add(payload);
+      }
 
       if (!mounted) {
         return;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Hackathon added successfully.'),
+        SnackBar(
+          content: Text(
+            _isEditing
+                ? 'Hackathon updated successfully.'
+                : 'Hackathon added successfully.',
+          ),
         ),
       );
       Navigator.pop(context);
@@ -258,7 +285,11 @@ class _AdminAddHackathonScreenState
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to add hackathon: $error'),
+          content: Text(
+            _isEditing
+                ? 'Failed to update hackathon: $error'
+                : 'Failed to add hackathon: $error',
+          ),
         ),
       );
     } finally {
@@ -278,119 +309,175 @@ class _AdminAddHackathonScreenState
         backgroundColor: Colors.transparent,
         foregroundColor: const Color(0xFF111827),
         elevation: 0,
-        title: const Text('Add Hackathon'),
+        title: Text(_isEditing ? 'Edit Hackathon' : 'Add Hackathon'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-        child: Column(
-          children: [
-            _AdminFormCard(
-              title: 'Hackathon Details',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _AdminInputLabel('Hackathon Name *'),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _titleController,
-                    decoration: _inputDecoration('Spring Hack 2026'),
-                  ),
-                  const SizedBox(height: 20),
-                  _AdminInputLabel('Description *'),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _descriptionController,
-                    maxLines: 5,
-                    decoration: _inputDecoration(
-                      'Write what teams should know about this hackathon.',
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          child: Column(
+            children: [
+              _AdminFormCard(
+                title: 'Hackathon Details',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _AdminInputLabel('Hackathon Name *'),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: _titleController,
+                      validator: (value) {
+                        if ((value ?? '').trim().isEmpty) {
+                          return 'Please enter the hackathon name.';
+                        }
+                        return null;
+                      },
+                      decoration: _inputDecoration('Spring Hack 2026'),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            _AdminFormCard(
-              title: 'Poster / Picture',
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (_selectedImageBytes != null)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: Image.memory(
-                        _selectedImageBytes!,
-                        height: 190,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
+                    const SizedBox(height: 20),
+                    _AdminInputLabel('Description *'),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: _descriptionController,
+                      maxLines: 5,
+                      validator: (value) {
+                        if ((value ?? '').trim().isEmpty) {
+                          return 'Please enter the description.';
+                        }
+                        return null;
+                      },
+                      decoration: _inputDecoration(
+                        'Write what teams should know about this hackathon.',
                       ),
-                    )
-                  else
-                    const HackathonCover(
-                      imageBase64: '',
-                      height: 190,
-                      placeholderLabel: 'Pick a poster image',
                     ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _pickImage,
-                          icon: const Icon(Icons.photo_library_outlined),
-                          label: const Text('Choose Image'),
-                        ),
+                    const SizedBox(height: 20),
+                    _AdminInputLabel('Participant Google Form URL *'),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: _participantFormUrlController,
+                      validator:
+                          (value) =>
+                              SubmissionValidators.validateRequiredHttpsUrl(
+                                value,
+                                label: 'the participant Google Form URL',
+                              ),
+                      decoration: _inputDecoration(
+                        'https://docs.google.com/forms/...',
                       ),
-                      if (_selectedImageBytes != null) ...[
-                        const SizedBox(width: 12),
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _selectedImageBytes = null;
-                              _imageBase64 = '';
-                            });
-                          },
-                          child: const Text('Remove'),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Images are stored directly in Firestore for this demo flow, so a smaller poster works best.',
-                    style: TextStyle(
-                      color: Color(0xFF6B7280),
-                      fontSize: 12,
-                      height: 1.4,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 20),
+                    _AdminInputLabel('Organiser Review URL *'),
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: _reviewUrlController,
+                      validator:
+                          (value) =>
+                              SubmissionValidators.validateRequiredHttpsUrl(
+                                value,
+                                label: 'the organiser review URL',
+                              ),
+                      decoration: _inputDecoration(
+                        'https://docs.google.com/spreadsheets/...',
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isSaving ? null : _createHackathon,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
+              _AdminFormCard(
+                title: 'Poster / Picture',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_selectedImageBytes != null)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Image.memory(
+                          _selectedImageBytes!,
+                          height: 190,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
                         ),
                       )
-                    : const Icon(Icons.rocket_launch_rounded),
-                label: Text(_isSaving ? 'Saving...' : 'Publish Hackathon'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4F39F6),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    else
+                      HackathonCover(
+                        imageBase64: _imageBase64,
+                        height: 190,
+                        placeholderLabel: 'Pick a poster image',
+                      ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _pickImage,
+                            icon: const Icon(Icons.photo_library_outlined),
+                            label: const Text('Choose Image'),
+                          ),
+                        ),
+                        if (_imageBase64.isNotEmpty) ...[
+                          const SizedBox(width: 12),
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                _selectedImageBytes = null;
+                                _imageBase64 = '';
+                              });
+                            },
+                            child: const Text('Remove'),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Images are stored directly in Firestore for this demo flow, so a smaller poster works best.',
+                      style: TextStyle(
+                        color: Color(0xFF6B7280),
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _isSaving ? null : _createOrUpdateHackathon,
+                  icon:
+                      _isSaving
+                          ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                          : Icon(
+                            _isEditing
+                                ? Icons.save_rounded
+                                : Icons.rocket_launch_rounded,
+                          ),
+                  label: Text(
+                    _isSaving
+                        ? 'Saving...'
+                        : _isEditing
+                        ? 'Save Changes'
+                        : 'Publish Hackathon',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4F39F6),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -405,28 +492,18 @@ class _AdminAddHackathonScreenState
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide.none,
       ),
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 16,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     );
   }
 }
 
 class _HackathonAdminCard extends StatelessWidget {
-  const _HackathonAdminCard({
-    required this.doc,
-  });
+  const _HackathonAdminCard({required this.hackathon});
 
-  final QueryDocumentSnapshot<Map<String, dynamic>> doc;
+  final HackathonSummary hackathon;
 
   @override
   Widget build(BuildContext context) {
-    final data = doc.data();
-    final registeredTeams =
-        List<String>.from(data['registeredTeams'] ?? const []);
-    final createdAt = data['createdAt'] as Timestamp?;
-
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -444,10 +521,39 @@ class _HackathonAdminCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          HackathonCover(
-            imageBase64: data['imageBase64'] ?? '',
-            height: 180,
-            placeholderLabel: 'No poster uploaded',
+          Stack(
+            children: [
+              HackathonCover(
+                imageBase64: hackathon.imageBase64,
+                height: 180,
+                placeholderLabel: 'No poster uploaded',
+              ),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (_) =>
+                                  AdminAddHackathonScreen(hackathon: hackathon),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(14),
+                    child: const Padding(
+                      padding: EdgeInsets.all(10),
+                      child: Icon(Icons.edit_rounded, color: Color(0xFF4F39F6)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           Row(
@@ -458,7 +564,7 @@ class _HackathonAdminCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      data['title'] ?? 'Untitled Hackathon',
+                      hackathon.title,
                       style: const TextStyle(
                         color: Color(0xFF111827),
                         fontSize: 18,
@@ -467,7 +573,9 @@ class _HackathonAdminCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      data['description'] ?? 'No description',
+                      hackathon.description.isEmpty
+                          ? 'No description'
+                          : hackathon.description,
                       style: const TextStyle(
                         color: Color(0xFF6B7280),
                         fontSize: 13,
@@ -488,12 +596,47 @@ class _HackathonAdminCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  '${registeredTeams.length} Teams',
+                  '${hackathon.registeredTeams.length} Teams',
                   style: const TextStyle(
                     color: Color(0xFF4F39F6),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _StatusChip(
+                label:
+                    hackathon.hasParticipantFormUrl
+                        ? 'Participant Form Ready'
+                        : 'Participant Form Missing',
+                color:
+                    hackathon.hasParticipantFormUrl
+                        ? const Color(0xFF16A34A)
+                        : const Color(0xFFD97706),
+                backgroundColor:
+                    hackathon.hasParticipantFormUrl
+                        ? const Color(0xFFDCFCE7)
+                        : const Color(0xFFFEF3C7),
+              ),
+              _StatusChip(
+                label:
+                    hackathon.hasReviewUrl
+                        ? 'Review URL Ready'
+                        : 'Review URL Missing',
+                color:
+                    hackathon.hasReviewUrl
+                        ? const Color(0xFF2563EB)
+                        : const Color(0xFFDC2626),
+                backgroundColor:
+                    hackathon.hasReviewUrl
+                        ? const Color(0xFFDBEAFE)
+                        : const Color(0xFFFEE2E2),
               ),
             ],
           ),
@@ -507,21 +650,15 @@ class _HackathonAdminCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                createdAt == null
+                hackathon.createdAt == null
                     ? 'Publishing...'
-                    : _formatDate(createdAt.toDate()),
-                style: const TextStyle(
-                  color: Color(0xFF6B7280),
-                  fontSize: 12,
-                ),
+                    : _formatDate(hackathon.createdAt!.toDate()),
+                style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12),
               ),
               const Spacer(),
               Text(
-                'Created by ${data['createdBy'] ?? 'admin'}',
-                style: const TextStyle(
-                  color: Color(0xFF9CA3AF),
-                  fontSize: 12,
-                ),
+                'Created by ${hackathon.createdBy.isEmpty ? 'admin' : hackathon.createdBy}',
+                style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 12),
               ),
             ],
           ),
@@ -531,22 +668,54 @@ class _HackathonAdminCard extends StatelessWidget {
   }
 
   String _formatDate(DateTime date) {
-    final month = <int, String>{
-      1: 'Jan',
-      2: 'Feb',
-      3: 'Mar',
-      4: 'Apr',
-      5: 'May',
-      6: 'Jun',
-      7: 'Jul',
-      8: 'Aug',
-      9: 'Sep',
-      10: 'Oct',
-      11: 'Nov',
-      12: 'Dec',
-    }[date.month];
+    final month =
+        <int, String>{
+          1: 'Jan',
+          2: 'Feb',
+          3: 'Mar',
+          4: 'Apr',
+          5: 'May',
+          6: 'Jun',
+          7: 'Jul',
+          8: 'Aug',
+          9: 'Sep',
+          10: 'Oct',
+          11: 'Nov',
+          12: 'Dec',
+        }[date.month];
 
     return '${date.day} $month ${date.year}';
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({
+    required this.label,
+    required this.color,
+    required this.backgroundColor,
+  });
+
+  final String label;
+  final Color color;
+  final Color backgroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+        ),
+      ),
+    );
   }
 }
 
@@ -571,11 +740,7 @@ class _AdminStateCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(
-            icon,
-            size: 40,
-            color: const Color(0xFF6D55F8),
-          ),
+          Icon(icon, size: 40, color: const Color(0xFF6D55F8)),
           const SizedBox(height: 14),
           Text(
             title,
@@ -602,10 +767,7 @@ class _AdminStateCard extends StatelessWidget {
 }
 
 class _AdminFormCard extends StatelessWidget {
-  const _AdminFormCard({
-    required this.title,
-    required this.child,
-  });
+  const _AdminFormCard({required this.title, required this.child});
 
   final String title;
   final Widget child;

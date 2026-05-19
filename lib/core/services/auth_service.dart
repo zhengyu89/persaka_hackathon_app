@@ -29,10 +29,7 @@ class AuthService {
     final user = credential.user;
 
     if (user != null) {
-      await _ensureUserDocument(
-        user,
-        fallbackEmail: email.trim(),
-      );
+      await _ensureUserDocument(user, fallbackEmail: email.trim());
     }
 
     return user;
@@ -46,10 +43,7 @@ class AuthService {
     final user = credential.user;
 
     if (user != null) {
-      await _ensureUserDocument(
-        user,
-        fallbackEmail: email.trim(),
-      );
+      await _ensureUserDocument(user, fallbackEmail: email.trim());
     }
 
     return user;
@@ -60,10 +54,7 @@ class AuthService {
       return 'admin';
     }
 
-    final doc = await _firestore
-        .collection('users')
-        .doc(user.uid)
-        .get();
+    final doc = await _firestore.collection('users').doc(user.uid).get();
 
     if (doc.exists) {
       return doc.data()?['role'] ?? 'participant';
@@ -73,8 +64,10 @@ class AuthService {
   }
 
   Future<void> logout() async {
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {}
     await _auth.signOut();
-    await _googleSignIn.signOut();
   }
 
   // =========================
@@ -85,7 +78,8 @@ class AuthService {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return null;
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -162,33 +156,24 @@ class AuthService {
 
     await user.updateDisplayName(displayName);
 
-    await _firestore
-        .collection('users')
-        .doc(user.uid)
-        .set({
-          'name': displayName,
-          'phoneNumber': phoneNumber,
-          'email': user.email,
-          if (photoURL != null) 'photoURL': photoURL,
-        }, SetOptions(merge: true));
+    await _firestore.collection('users').doc(user.uid).set({
+      'name': displayName,
+      'phoneNumber': phoneNumber,
+      'email': user.email,
+      if (photoURL != null) 'photoURL': photoURL,
+    }, SetOptions(merge: true));
   }
 
   Future<Map<String, dynamic>?> getUserProfile() async {
     final user = _auth.currentUser;
     if (user == null) return null;
 
-    final doc = await _firestore
-        .collection('users')
-        .doc(user.uid)
-        .get();
+    final doc = await _firestore.collection('users').doc(user.uid).get();
 
     return doc.data();
   }
 
-  Future<void> _ensureUserDocument(
-    User user, {
-    String? fallbackEmail,
-  }) async {
+  Future<void> _ensureUserDocument(User user, {String? fallbackEmail}) async {
     final normalizedEmail = (user.email ?? fallbackEmail ?? '').trim();
     final role = _isAdminEmail(normalizedEmail) ? 'admin' : 'participant';
     final docRef = _firestore.collection('users').doc(user.uid);

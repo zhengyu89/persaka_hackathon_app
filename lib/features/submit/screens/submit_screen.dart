@@ -1,308 +1,467 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../../../shared/widgets/participant_ui.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class SubmitScreen extends StatelessWidget {
-  const SubmitScreen({super.key});
+import '../../../shared/widgets/participant_ui.dart';
+import '../models/submission_models.dart';
+import '../utils/submission_validators.dart';
+import '../widgets/submission_workspace_view.dart';
+
+class SubmitScreen extends StatefulWidget {
+  const SubmitScreen({
+    super.key,
+    this.firestore,
+    this.auth,
+    this.launchUrlOverride,
+  });
+
+  final FirebaseFirestore? firestore;
+  final FirebaseAuth? auth;
+  final Future<bool> Function(Uri uri)? launchUrlOverride;
+
+  @override
+  State<SubmitScreen> createState() => _SubmitScreenState();
+}
+
+class _SubmitScreenState extends State<SubmitScreen> {
+  String? _selectedTeamCode;
+  String? _selectedHackathonId;
+  bool _isSaving = false;
+
+  FirebaseFirestore get _firestore =>
+      widget.firestore ?? FirebaseFirestore.instance;
+  FirebaseAuth get _auth => widget.auth ?? FirebaseAuth.instance;
 
   @override
   Widget build(BuildContext context) {
+    final currentEmail = _auth.currentUser?.email ?? '';
+
+    if (currentEmail.isEmpty) {
+      return _buildScaffold(
+        SubmissionWorkspaceViewData(
+          currentEmail: '',
+          memberTeams: const [],
+          leaderTeams: const [],
+          selectedTeam: null,
+          joinedHackathons: const [],
+          selectedHackathon: null,
+          existingSubmission: null,
+          isSaving: false,
+        ),
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream:
+          _firestore
+              .collection('teams')
+              .where('members', arrayContains: currentEmail)
+              .snapshots(),
+      builder: (context, teamSnapshot) {
+        if (teamSnapshot.connectionState == ConnectionState.waiting &&
+            !teamSnapshot.hasData) {
+          return _buildScaffold(
+            SubmissionWorkspaceViewData(
+              currentEmail: currentEmail,
+              memberTeams: const [],
+              leaderTeams: const [],
+              selectedTeam: null,
+              joinedHackathons: const [],
+              selectedHackathon: null,
+              existingSubmission: null,
+              isSaving: false,
+              isLoading: true,
+            ),
+          );
+        }
+
+        if (teamSnapshot.hasError) {
+          return _buildErrorScaffold(
+            title: 'Could not load your teams',
+            subtitle:
+                'Please try again once your connection to Firestore is available.',
+          );
+        }
+
+        final teams =
+            teamSnapshot.data?.docs
+                .map(SubmissionTeamSummary.fromDocument)
+                .toList() ??
+            <SubmissionTeamSummary>[];
+        teams.sort((a, b) {
+          return (b.createdAt?.millisecondsSinceEpoch ?? 0).compareTo(
+            a.createdAt?.millisecondsSinceEpoch ?? 0,
+          );
+        });
+
+        final leaderTeams =
+            teams.where((team) => team.isLeader(currentEmail)).toList();
+        final selectedTeam = _resolveSelectedTeam(leaderTeams);
+
+        if (selectedTeam == null) {
+          return _buildScaffold(
+            SubmissionWorkspaceViewData(
+              currentEmail: currentEmail,
+              memberTeams: teams,
+              leaderTeams: leaderTeams,
+              selectedTeam: null,
+              joinedHackathons: const [],
+              selectedHackathon: null,
+              existingSubmission: null,
+              isSaving: false,
+            ),
+          );
+        }
+
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream:
+              _firestore
+                  .collection('hackathons')
+                  .where('registeredTeams', arrayContains: selectedTeam.code)
+                  .snapshots(),
+          builder: (context, hackathonSnapshot) {
+            if (hackathonSnapshot.connectionState == ConnectionState.waiting &&
+                !hackathonSnapshot.hasData) {
+              return _buildScaffold(
+                SubmissionWorkspaceViewData(
+                  currentEmail: currentEmail,
+                  memberTeams: teams,
+                  leaderTeams: leaderTeams,
+                  selectedTeam: selectedTeam,
+                  joinedHackathons: const [],
+                  selectedHackathon: null,
+                  existingSubmission: null,
+                  isSaving: false,
+                  isLoading: true,
+                ),
+              );
+            }
+
+            if (hackathonSnapshot.hasError) {
+              return _buildErrorScaffold(
+                title: 'Could not load joined hackathons',
+                subtitle:
+                    'Please try again after checking the team registration data.',
+              );
+            }
+
+            final hackathons =
+                hackathonSnapshot.data?.docs
+                    .map(HackathonSummary.fromDocument)
+                    .toList() ??
+                <HackathonSummary>[];
+            hackathons.sort((a, b) {
+              return (b.createdAt?.millisecondsSinceEpoch ?? 0).compareTo(
+                a.createdAt?.millisecondsSinceEpoch ?? 0,
+              );
+            });
+
+            final selectedHackathon = _resolveSelectedHackathon(hackathons);
+
+            if (selectedHackathon == null) {
+              return _buildScaffold(
+                SubmissionWorkspaceViewData(
+                  currentEmail: currentEmail,
+                  memberTeams: teams,
+                  leaderTeams: leaderTeams,
+                  selectedTeam: selectedTeam,
+                  joinedHackathons: hackathons,
+                  selectedHackathon: null,
+                  existingSubmission: null,
+                  isSaving: false,
+                ),
+              );
+            }
+
+            final submissionId = submissionDocumentId(
+              hackathonId: selectedHackathon.id,
+              teamCode: selectedTeam.code,
+            );
+
+            return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              stream:
+                  _firestore
+                      .collection('submissions')
+                      .doc(submissionId)
+                      .snapshots(),
+              builder: (context, submissionSnapshot) {
+                if (submissionSnapshot.hasError) {
+                  return _buildErrorScaffold(
+                    title: 'Could not load submission links',
+                    subtitle:
+                        'The team and hackathon were found, but the submission record could not be read.',
+                  );
+                }
+
+                final existingSubmission =
+                    (submissionSnapshot.data?.exists ?? false)
+                        ? SubmissionRecord.fromDocument(
+                          submissionSnapshot.data!,
+                        )
+                        : null;
+
+                return _buildScaffold(
+                  SubmissionWorkspaceViewData(
+                    currentEmail: currentEmail,
+                    memberTeams: teams,
+                    leaderTeams: leaderTeams,
+                    selectedTeam: selectedTeam,
+                    joinedHackathons: hackathons,
+                    selectedHackathon: selectedHackathon,
+                    existingSubmission: existingSubmission,
+                    isSaving: _isSaving,
+                  ),
+                  selectedTeam: selectedTeam,
+                  selectedHackathon: selectedHackathon,
+                  currentEmail: currentEmail,
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  SubmissionTeamSummary? _resolveSelectedTeam(
+    List<SubmissionTeamSummary> leaderTeams,
+  ) {
+    if (leaderTeams.isEmpty) {
+      return null;
+    }
+
+    return leaderTeams.firstWhere(
+      (team) => team.code == _selectedTeamCode,
+      orElse: () => leaderTeams.first,
+    );
+  }
+
+  HackathonSummary? _resolveSelectedHackathon(
+    List<HackathonSummary> hackathons,
+  ) {
+    if (hackathons.isEmpty) {
+      return null;
+    }
+
+    return hackathons.firstWhere(
+      (hackathon) => hackathon.id == _selectedHackathonId,
+      orElse: () => hackathons.first,
+    );
+  }
+
+  Widget _buildScaffold(
+    SubmissionWorkspaceViewData data, {
+    SubmissionTeamSummary? selectedTeam,
+    HackathonSummary? selectedHackathon,
+    String? currentEmail,
+  }) {
     return ParticipantPageScaffold(
       title: 'Submission Hub',
       subtitle:
-          'A no-logic submission UI with status cards, deliverables, and upload placeholders.',
+          'Open the organiser Google Form and submit your project video and repository links for each joined hackathon.',
       icon: Icons.upload_file_rounded,
-      trailing: const ParticipantInfoChip(
-        label: 'Draft',
+      trailing: ParticipantInfoChip(
+        label:
+            data.hasLeaderTeam
+                ? '${data.leaderTeams.length} Leader Team${data.leaderTeams.length == 1 ? '' : 's'}'
+                : '${data.memberTeams.length} Teams',
         color: Colors.white,
       ),
-      children: const [
-        _SubmissionStatusCard(),
-        _DeliverablesCard(),
-        _UploadSlotsCard(),
-        _RulesCard(),
+      children: [
+        SubmissionWorkspaceView(
+          data: data,
+          onTeamChanged: (teamCode) {
+            setState(() {
+              _selectedTeamCode = teamCode;
+              _selectedHackathonId = null;
+            });
+          },
+          onHackathonChanged: (hackathonId) {
+            setState(() {
+              _selectedHackathonId = hackathonId;
+            });
+          },
+          onOpenParticipantForm:
+              selectedHackathon == null
+                  ? null
+                  : () =>
+                      _openExternalUrl(selectedHackathon.participantFormUrl),
+          onSaveLinks: (repositoryUrl, videoUrl) async {
+            if (selectedTeam == null ||
+                selectedHackathon == null ||
+                currentEmail == null ||
+                currentEmail.isEmpty) {
+              return;
+            }
+
+            await _saveSubmission(
+              currentEmail: currentEmail,
+              selectedTeam: selectedTeam,
+              selectedHackathon: selectedHackathon,
+              repositoryUrl: repositoryUrl,
+              videoUrl: videoUrl,
+            );
+          },
+          onOpenLink: (url) => _openExternalUrl(url),
+        ),
       ],
     );
   }
-}
 
-class _SubmissionStatusCard extends StatelessWidget {
-  const _SubmissionStatusCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return ParticipantCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const ParticipantSectionHeader(
-            title: 'Submission Status',
-            subtitle: 'The layout is ready for future validation and upload progress.',
-          ),
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              gradient: ParticipantPalette.headerGradient,
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Final delivery closes in 18h 24m',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                  ),
+  Widget _buildErrorScaffold({
+    required String title,
+    required String subtitle,
+  }) {
+    return ParticipantPageScaffold(
+      title: 'Submission Hub',
+      subtitle:
+          'Open the organiser Google Form and submit your project video and repository links for each joined hackathon.',
+      icon: Icons.upload_file_rounded,
+      trailing: const ParticipantInfoChip(
+        label: 'Unavailable',
+        color: Colors.white,
+      ),
+      children: [
+        ParticipantCard(
+          child: Column(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: ParticipantPalette.danger.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(18),
                 ),
-                SizedBox(height: 8),
-                Text(
-                  'Complete your pitch deck, repository link, and demo video before lock.',
-                  style: TextStyle(
-                    color: Color(0xFFEAE7FF),
-                    height: 1.45,
-                  ),
+                child: const Icon(
+                  Icons.error_outline_rounded,
+                  color: ParticipantPalette.danger,
                 ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DeliverablesCard extends StatelessWidget {
-  const _DeliverablesCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return const ParticipantCard(
-      child: Column(
-        children: [
-          ParticipantSectionHeader(
-            title: 'Required Deliverables',
-            subtitle: 'Checklist styling based on the participant dashboard language.',
-          ),
-          _DeliverableRow(
-            title: 'Pitch Deck',
-            subtitle: 'PDF or Canva share link',
-            complete: true,
-          ),
-          _DeliverableRow(
-            title: 'Source Repository',
-            subtitle: 'Public or judge-accessible repository URL',
-            complete: true,
-          ),
-          _DeliverableRow(
-            title: 'Demo Video',
-            subtitle: '60 to 90 second product walkthrough',
-            complete: false,
-          ),
-          _DeliverableRow(
-            title: 'Project Summary',
-            subtitle: 'Problem, solution, and impact statement',
-            complete: false,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DeliverableRow extends StatelessWidget {
-  const _DeliverableRow({
-    required this.title,
-    required this.subtitle,
-    required this.complete,
-  });
-
-  final String title;
-  final String subtitle;
-  final bool complete;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: complete
-              ? ParticipantPalette.success.withOpacity(0.08)
-              : const Color(0xFFF8F8FD),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              complete ? Icons.check_circle_rounded : Icons.timelapse_rounded,
-              color: complete
-                  ? ParticipantPalette.success
-                  : ParticipantPalette.warning,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: ParticipantPalette.textPrimary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: ParticipantPalette.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _UploadSlotsCard extends StatelessWidget {
-  const _UploadSlotsCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return const ParticipantCard(
-      child: Column(
-        children: [
-          ParticipantSectionHeader(
-            title: 'Upload Placeholders',
-            subtitle: 'These blocks can later become file pickers and link inputs.',
-          ),
-          _UploadSlot(
-            icon: Icons.slideshow_rounded,
-            title: 'Pitch Deck Slot',
-            subtitle: 'Drop presentation file or add hosted link',
-          ),
-          _UploadSlot(
-            icon: Icons.ondemand_video_rounded,
-            title: 'Demo Video Slot',
-            subtitle: 'Reserve space for the final walkthrough clip',
-          ),
-          _UploadSlot(
-            icon: Icons.link_rounded,
-            title: 'Repository Slot',
-            subtitle: 'Connect GitHub or GitLab project URL',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _UploadSlot extends StatelessWidget {
-  const _UploadSlot({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: ParticipantPalette.primary.withOpacity(0.2),
-            style: BorderStyle.solid,
-          ),
-          color: ParticipantPalette.primary.withOpacity(0.05),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: ParticipantPalette.primary,
-                borderRadius: BorderRadius.circular(14),
+              const SizedBox(height: 14),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: ParticipantPalette.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              child: Icon(icon, color: Colors.white),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: ParticipantPalette.textPrimary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      color: ParticipantPalette.textSecondary,
-                      fontSize: 12,
-                      height: 1.45,
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 8),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: ParticipantPalette.textSecondary,
+                  height: 1.45,
+                ),
               ),
-            ),
-            const Icon(Icons.add_circle_outline_rounded,
-                color: ParticipantPalette.primary),
-          ],
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
-}
 
-class _RulesCard extends StatelessWidget {
-  const _RulesCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return const ParticipantCard(
-      child: Column(
-        children: [
-          ParticipantSectionHeader(
-            title: 'Submission Notes',
-            subtitle: 'Helpful reminders styled as a participant checklist.',
-          ),
-          ParticipantBulletRow(
-            text: 'Keep all shared links accessible to judges without extra login friction.',
-            icon: Icons.verified_user_rounded,
-            color: ParticipantPalette.primary,
-          ),
-          ParticipantBulletRow(
-            text: 'Demo video should focus on the problem, flow, and impact in under 90 seconds.',
-            icon: Icons.movie_creation_rounded,
-            color: ParticipantPalette.secondary,
-          ),
-          ParticipantBulletRow(
-            text: 'Last-minute edits after lock may not be accepted unless approved by organizers.',
-            icon: Icons.warning_amber_rounded,
-            color: ParticipantPalette.warning,
-          ),
-        ],
-      ),
+  Future<void> _saveSubmission({
+    required String currentEmail,
+    required SubmissionTeamSummary selectedTeam,
+    required HackathonSummary selectedHackathon,
+    required String repositoryUrl,
+    required String videoUrl,
+  }) async {
+    final submissionId = submissionDocumentId(
+      hackathonId: selectedHackathon.id,
+      teamCode: selectedTeam.code,
     );
+    final docRef = _firestore.collection('submissions').doc(submissionId);
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final existingDoc = await docRef.get();
+      final payload = <String, dynamic>{
+        'hackathonId': selectedHackathon.id,
+        'hackathonTitle': selectedHackathon.title,
+        'teamCode': selectedTeam.code,
+        'teamName': selectedTeam.name,
+        'leaderEmail': selectedTeam.leaderEmail,
+        'repositoryUrl': SubmissionValidators.normalizeUrl(repositoryUrl),
+        'videoUrl': SubmissionValidators.normalizeUrl(videoUrl),
+        'submittedByEmail': currentEmail,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      if (!existingDoc.exists) {
+        payload['createdAt'] = FieldValue.serverTimestamp();
+      }
+
+      await docRef.set(payload, SetOptions(merge: true));
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Submission links saved successfully.')),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save submission links: $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _openExternalUrl(String rawUrl) async {
+    final normalized = SubmissionValidators.normalizeUrl(rawUrl);
+    final uri = Uri.tryParse(normalized);
+
+    if (uri == null) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This link is not configured correctly yet.'),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final launched =
+          await (widget.launchUrlOverride?.call(uri) ??
+              launchUrl(uri, mode: LaunchMode.externalApplication));
+
+      if (launched || !mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not open $normalized')));
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open the link: $error')),
+      );
+    }
   }
 }
