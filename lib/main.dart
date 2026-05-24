@@ -49,9 +49,10 @@ class MyApp extends StatelessWidget {
 
       // 🔥 Navigation routes for the app
       routes: AppRoutes.routes,
+      onGenerateRoute: AppRoutes.onGenerateRoute,
 
       // 🔥 This replaces MyHomePage (handles login session automatically)
-      home: AuthWrapper(),
+      home: const AuthWrapper(),
     );
   }
 }
