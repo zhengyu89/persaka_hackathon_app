@@ -472,8 +472,12 @@ class _AdminAddHackathonScreenState extends State<AdminAddHackathonScreen> {
         payload['judgingRules'] = {
           'judgesPerTeam': 2,
           'scoreScale': 10,
+          'scoreScaleMode': '1-10',
           'allowScoreEditing': true,
           'anonymousJudging': false,
+          'minimumJudgesRequired': 1,
+          'scoringMethod': 'Average Score',
+          'judgeSubmissionDeadline': null,
         };
         payload['submissionRequirements'] = {
           'requireProjectTitle': true,

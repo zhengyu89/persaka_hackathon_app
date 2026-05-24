@@ -60,9 +60,16 @@ class _SettingsFormState extends State<_SettingsForm> {
   final TextEditingController _scoreScaleController = TextEditingController();
   final TextEditingController _submissionDeadlineController =
       TextEditingController();
+  final TextEditingController _minimumJudgesController =
+      TextEditingController();
+  final TextEditingController _judgeSubmissionDeadlineController =
+      TextEditingController();
 
   bool _allowScoreEditing = true;
   bool _anonymousJudging = false;
+  String _scoreScaleOption = '1-10';
+  String _scoringMethod = 'Average Score';
+  DateTime? _judgeSubmissionDeadline;
   bool _requireProjectTitle = true;
   bool _requireDescription = true;
   bool _requireGithub = true;
@@ -89,6 +96,8 @@ class _SettingsFormState extends State<_SettingsForm> {
     _judgesPerTeamController.dispose();
     _scoreScaleController.dispose();
     _submissionDeadlineController.dispose();
+    _minimumJudgesController.dispose();
+    _judgeSubmissionDeadlineController.dispose();
     super.dispose();
   }
 
@@ -97,9 +106,32 @@ class _SettingsFormState extends State<_SettingsForm> {
     final requirements = hackathon.submissionRequirements;
     _judgesPerTeamController.text =
         (judging['judgesPerTeam'] ?? 2).toString();
-    _scoreScaleController.text = (judging['scoreScale'] ?? 10).toString();
+    final scoreScale = (judging['scoreScale'] ?? 10).toString();
+    _scoreScaleOption =
+        const ['5', '10', '100'].contains(scoreScale)
+            ? '1-$scoreScale'
+            : 'Custom';
+    _scoreScaleController.text = scoreScale;
     _allowScoreEditing = judging['allowScoreEditing'] != false;
     _anonymousJudging = judging['anonymousJudging'] == true;
+    _minimumJudgesController.text =
+        (judging['minimumJudgesRequired'] ?? 1).toString();
+    _scoringMethod = (judging['scoringMethod'] ?? 'Average Score').toString();
+    if (!const [
+      'Average Score',
+      'Highest Score',
+      'Weighted Average',
+    ].contains(_scoringMethod)) {
+      _scoringMethod = 'Average Score';
+    }
+    final deadline = judging['judgeSubmissionDeadline'];
+    _judgeSubmissionDeadline =
+        deadline is Timestamp
+            ? deadline.toDate()
+            : DateTime.tryParse((deadline ?? '').toString());
+    _judgeSubmissionDeadlineController.text = _formatDateTime(
+      _judgeSubmissionDeadline,
+    );
     _requireProjectTitle = requirements['requireProjectTitle'] != false;
     _requireDescription = requirements['requireDescription'] != false;
     _requireGithub = requirements['requireGithub'] != false;
@@ -116,7 +148,12 @@ class _SettingsFormState extends State<_SettingsForm> {
 
     final judgesPerTeam =
         int.tryParse(_judgesPerTeamController.text.trim()) ?? 2;
-    final scoreScale = int.tryParse(_scoreScaleController.text.trim()) ?? 10;
+    final scoreScale =
+        _scoreScaleOption == 'Custom'
+            ? int.tryParse(_scoreScaleController.text.trim()) ?? 10
+            : int.tryParse(_scoreScaleOption.replaceFirst('1-', '')) ?? 10;
+    final minimumJudgesRequired =
+        int.tryParse(_minimumJudgesController.text.trim()) ?? 1;
 
     try {
       await FirebaseFirestore.instance
@@ -126,8 +163,15 @@ class _SettingsFormState extends State<_SettingsForm> {
             'judgingRules': {
               'judgesPerTeam': judgesPerTeam,
               'scoreScale': scoreScale,
+              'scoreScaleMode': _scoreScaleOption,
               'allowScoreEditing': _allowScoreEditing,
               'anonymousJudging': _anonymousJudging,
+              'minimumJudgesRequired': minimumJudgesRequired,
+              'scoringMethod': _scoringMethod,
+              'judgeSubmissionDeadline':
+                  _judgeSubmissionDeadline == null
+                      ? null
+                      : Timestamp.fromDate(_judgeSubmissionDeadline!),
             },
             'submissionRequirements': {
               'requireProjectTitle': _requireProjectTitle,
@@ -159,6 +203,42 @@ class _SettingsFormState extends State<_SettingsForm> {
         });
       }
     }
+  }
+
+  Future<void> _pickJudgeSubmissionDeadline() async {
+    final initialDate = _judgeSubmissionDeadline ?? DateTime.now();
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+    );
+
+    if (pickedDate == null) {
+      return;
+    }
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initialDate),
+    );
+
+    if (pickedTime == null) {
+      return;
+    }
+
+    final deadline = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    setState(() {
+      _judgeSubmissionDeadline = deadline;
+      _judgeSubmissionDeadlineController.text = _formatDateTime(deadline);
+    });
   }
 
   Future<void> _showCriteriaSheet({
@@ -315,41 +395,147 @@ class _SettingsFormState extends State<_SettingsForm> {
           _SettingsCard(
             title: 'Judging Rules',
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _judgesPerTeamController,
-                        keyboardType: TextInputType.number,
-                        decoration: _inputDecoration('Judges per team'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _scoreScaleController,
-                        keyboardType: TextInputType.number,
+                _SettingField(
+                  title: 'Judges Per Team',
+                  helper: 'Number of judges assigned to evaluate each team',
+                  child: TextField(
+                    controller: _judgesPerTeamController,
+                    keyboardType: TextInputType.number,
+                    decoration: _inputDecoration('2'),
+                  ),
+                ),
+                _SettingField(
+                  title: 'Score Scale',
+                  helper: 'Maximum score judges can give',
+                  child: Column(
+                    children: [
+                      DropdownButtonFormField<String>(
+                        value: _scoreScaleOption,
                         decoration: _inputDecoration('Score scale'),
+                        items:
+                            const ['1-5', '1-10', '1-100', 'Custom']
+                                .map(
+                                  (option) => DropdownMenuItem(
+                                    value: option,
+                                    child: Text(option),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+                          setState(() {
+                            _scoreScaleOption = value;
+                            if (value != 'Custom') {
+                              _scoreScaleController.text = value.replaceFirst(
+                                '1-',
+                                '',
+                              );
+                            }
+                          });
+                        },
                       ),
-                    ),
-                  ],
+                      if (_scoreScaleOption == 'Custom') ...[
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _scoreScaleController,
+                          keyboardType: TextInputType.number,
+                          decoration: _inputDecoration('Maximum score'),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-                _SettingsSwitch(
-                  title: 'Allow score editing',
-                  value: _allowScoreEditing,
-                  onChanged:
-                      (value) => setState(() {
-                        _allowScoreEditing = value;
-                      }),
+                _SettingField(
+                  title: 'Allow Score Editing',
+                  helper: 'Allow judges to modify submitted scores',
+                  child: _SettingsSwitch(
+                    title: 'Allow score editing',
+                    value: _allowScoreEditing,
+                    onChanged:
+                        (value) => setState(() {
+                          _allowScoreEditing = value;
+                        }),
+                  ),
                 ),
-                _SettingsSwitch(
-                  title: 'Anonymous judging',
-                  value: _anonymousJudging,
-                  onChanged:
-                      (value) => setState(() {
-                        _anonymousJudging = value;
-                      }),
+                _SettingField(
+                  title: 'Anonymous Judging',
+                  helper: 'Hide participant identity during judging',
+                  child: _SettingsSwitch(
+                    title: 'Anonymous judging',
+                    value: _anonymousJudging,
+                    onChanged:
+                        (value) => setState(() {
+                          _anonymousJudging = value;
+                        }),
+                  ),
+                ),
+                _SettingField(
+                  title: 'Minimum Judges Required',
+                  helper: 'Minimum completed evaluations required',
+                  child: TextField(
+                    controller: _minimumJudgesController,
+                    keyboardType: TextInputType.number,
+                    decoration: _inputDecoration('1'),
+                  ),
+                ),
+                _SettingField(
+                  title: 'Scoring Method',
+                  helper: 'How final score is calculated',
+                  child: Column(
+                    children:
+                        const [
+                          'Average Score',
+                          'Highest Score',
+                          'Weighted Average',
+                        ].map((method) {
+                          return RadioListTile<String>(
+                            value: method,
+                            groupValue: _scoringMethod,
+                            onChanged:
+                                (value) => setState(() {
+                                  _scoringMethod = value ?? 'Average Score';
+                                }),
+                            title: Text(method),
+                            activeColor: const Color(0xFF4F39F6),
+                            contentPadding: EdgeInsets.zero,
+                          );
+                        }).toList(),
+                  ),
+                ),
+                _SettingField(
+                  title: 'Judge Submission Deadline',
+                  helper: 'Deadline for judges to submit evaluations',
+                  child: TextField(
+                    controller: _judgeSubmissionDeadlineController,
+                    readOnly: true,
+                    onTap: _pickJudgeSubmissionDeadline,
+                    decoration: _inputDecoration('Select date and time')
+                        .copyWith(
+                          suffixIcon: const Icon(
+                            Icons.calendar_month_rounded,
+                          ),
+                        ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed:
+                        _judgeSubmissionDeadline == null
+                            ? null
+                            : () {
+                              setState(() {
+                                _judgeSubmissionDeadline = null;
+                                _judgeSubmissionDeadlineController.clear();
+                              });
+                            },
+                    icon: const Icon(Icons.close_rounded),
+                    label: const Text('Clear deadline'),
+                  ),
                 ),
               ],
             ),
@@ -551,6 +737,59 @@ class _SettingsSwitch extends StatelessWidget {
   }
 }
 
+class _SettingField extends StatelessWidget {
+  const _SettingField({
+    required this.title,
+    required this.helper,
+    required this.child,
+  });
+
+  final String title;
+  final String helper;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: Color(0xFF111827),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const Icon(
+                Icons.info_outline_rounded,
+                size: 18,
+                color: Color(0xFF6B7280),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          child,
+          const SizedBox(height: 8),
+          Text(
+            helper,
+            style: const TextStyle(
+              color: Color(0xFF6B7280),
+              fontSize: 12,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CriteriaTile extends StatelessWidget {
   const _CriteriaTile({
     required this.name,
@@ -654,4 +893,14 @@ InputDecoration _inputDecoration(String hintText) {
     ),
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
   );
+}
+
+String _formatDateTime(DateTime? dateTime) {
+  if (dateTime == null) {
+    return '';
+  }
+
+  final hour = dateTime.hour.toString().padLeft(2, '0');
+  final minute = dateTime.minute.toString().padLeft(2, '0');
+  return '${dateTime.day}/${dateTime.month}/${dateTime.year} $hour:$minute';
 }
