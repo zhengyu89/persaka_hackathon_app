@@ -368,98 +368,61 @@ class _AssignmentState {
   bool hasJudgeAssignment = false;
 }
 
-Stream<List<_JudgeHackathonAssignment>> _assignedHackathonsStream(
-  String judgeUid,
-) {
-  late StreamController<List<_JudgeHackathonAssignment>> controller;
-  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? hackathonSub;
-  final judgeSubs = <String, StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>>{};
-  final criteriaSubs = <String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>{};
-  final states = <String, _AssignmentState>{};
+Stream<List<_JudgeHackathonAssignment>>
+_assignedHackathonsStream(String judgeUid) {
 
-  void emit() {
-    if (controller.isClosed) {
-      return;
-    }
+  return FirebaseFirestore.instance
+      .collection('hackathons')
+      .snapshots()
+      .map((snapshot) {
 
-    final assignments =
-        states.values
-            .where((state) => state.hasJudgeAssignment)
-            .map(
-              (state) => _JudgeHackathonAssignment(
-                hackathon: state.hackathon,
-                assignedTeamIds: state.assignedTeamIds,
-                criteriaCount: state.criteriaCount,
-              ),
-            )
-            .toList()
-          ..sort(
-            (a, b) => a.hackathon.title.toLowerCase().compareTo(
-              b.hackathon.title.toLowerCase(),
-            ),
+    List<_JudgeHackathonAssignment> assignments = [];
+
+    for (final doc in snapshot.docs) {
+
+      final data = doc.data();
+
+      final judgeAssignments =
+          List<Map<String, dynamic>>.from(
+            data['judgeAssignments'] ?? [],
           );
 
-    controller.add(assignments);
-  }
+      final myAssignments =
+          judgeAssignments.where(
+            (assignment) =>
+                assignment['judgeId'] == judgeUid,
+          ).toList();
 
-  Future<void> cancelNested() async {
-    for (final sub in judgeSubs.values) {
-      await sub.cancel();
-    }
-    for (final sub in criteriaSubs.values) {
-      await sub.cancel();
-    }
-    judgeSubs.clear();
-    criteriaSubs.clear();
-  }
+      if (myAssignments.isEmpty) {
+        continue;
+      }
 
-  controller = StreamController<List<_JudgeHackathonAssignment>>(
-    onListen: () {
-      hackathonSub =
-          FirebaseFirestore.instance.collection('hackathons').snapshots().listen(
-        (snapshot) async {
-          await cancelNested();
-          states.clear();
+      assignments.add(
+        _JudgeHackathonAssignment(
+          hackathon:
+              HackathonSummary.fromDocument(doc),
 
-          for (final doc in snapshot.docs) {
-            final state = _AssignmentState(
-              hackathon: HackathonSummary.fromDocument(doc),
-            );
-            states[doc.id] = state;
+          assignedTeamIds:
+              myAssignments
+                  .map(
+                    (assignment) =>
+                        assignment['teamId']
+                            as String,
+                  )
+                  .toList(),
 
-            judgeSubs[doc.id] = doc.reference
-                .collection('judges')
-                .doc(judgeUid)
-                .snapshots()
-                .listen((judgeDoc) {
-              final data = judgeDoc.data();
-              state.hasJudgeAssignment = judgeDoc.exists;
-              state.assignedTeamIds = List<String>.from(
-                data?['assignedTeams'] ?? const <String>[],
-              );
-              emit();
-            });
-
-            criteriaSubs[doc.id] = doc.reference
-                .collection('criteria')
-                .where('active', isEqualTo: true)
-                .snapshots()
-                .listen((criteriaSnapshot) {
-              state.criteriaCount = criteriaSnapshot.docs.length;
-              emit();
-            });
-          }
-
-          emit();
-        },
-        onError: controller.addError,
+          criteriaCount: 1,
+        ),
       );
-    },
-    onCancel: () async {
-      await hackathonSub?.cancel();
-      await cancelNested();
-    },
-  );
+    }
 
-  return controller.stream;
+    assignments.sort(
+      (a, b) =>
+          a.hackathon.title.compareTo(
+            b.hackathon.title,
+          ),
+    );
+
+    return assignments;
+  });
 }
