@@ -1,0 +1,82 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.tmp
+*.temp
+.atom/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IDE files
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Keep .vscode available for shared workspace settings if the team adds them.
+# Uncomment the next line if you want all local VS Code settings ignored.
+# .vscode/
+
+# Logs
+*.log
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+pubsub-debug.log*
+storage-debug.log*
+
+# Python and miscellaneous generated files
+*.class
+*.pyc
+.build/
+.buildlog/
+
+# Flutter / Dart / Pub
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+
+# Flutter symbolication / obfuscation
+app.*.symbols
+app.*.map.json
+
+# Android generated and local machine files
+/android/app/debug
+/android/app/profile
+/android/app/release
+/android/local.properties
+/android/key.properties
+*.jks
+*.keystore
+
+# iOS / macOS local Xcode files
+**/xcuserdata/
+**/*.xcuserstate
+
+# Firebase local emulator and cache files
+.firebase/
+
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.p12
+*.key
+*serviceAccount*.json
+
+# Local database and cache files that may appear during development
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal

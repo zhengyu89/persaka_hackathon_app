@@ -1,0 +1,62 @@
+{
+  "project_info": {
+    "project_number": "277640581953",
+    "project_id": "persaka-hackathon-dev",
+    "storage_bucket": "persaka-hackathon-dev.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:277640581953:android:bf45e9ccce3bf5bb19c7c0",
+        "android_client_info": {
+          "package_name": "com.example.persaka_hackathon_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "277640581953-g28q7u4q31ru4q038ic2u6jeeml1reu5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.persaka_hackathon_app",
+            "certificate_hash": "e44d87381ad35c84ace6bbbcb2154782fce953a3"
+          }
+        },
+        {
+          "client_id": "277640581953-tb79jc7tuba37r7fcil62j40dcs9u5um.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.persaka_hackathon_app",
+            "certificate_hash": "c29800e99f44b48848cab471d4d89628227f988c"
+          }
+        },
+        {
+          "client_id": "277640581953-o6a3fpt029g4lqc8dekf4ajvt5v92r4r.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBl4i3KuUDZamGILyu5_WCSZLxVfinbcH0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "277640581953-o6a3fpt029g4lqc8dekf4ajvt5v92r4r.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "277640581953-tdlkj40vvbucac7ujvg89t5pa199tk7n.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.persakaHackathonApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
