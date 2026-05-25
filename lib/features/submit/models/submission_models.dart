@@ -48,6 +48,11 @@ class HackathonSummary {
     required this.registeredTeams,
     required this.createdBy,
     required this.createdAt,
+    this.status = 'Upcoming',
+    this.startDate,
+    this.endDate,
+    this.judgingRules = const <String, dynamic>{},
+    this.submissionRequirements = const <String, dynamic>{},
   });
 
   final String id;
@@ -59,6 +64,11 @@ class HackathonSummary {
   final List<String> registeredTeams;
   final String createdBy;
   final Timestamp? createdAt;
+  final String status;
+  final Timestamp? startDate;
+  final Timestamp? endDate;
+  final Map<String, dynamic> judgingRules;
+  final Map<String, dynamic> submissionRequirements;
 
   factory HackathonSummary.fromMap(String id, Map<String, dynamic> data) {
     return HackathonSummary(
@@ -73,6 +83,15 @@ class HackathonSummary {
       ),
       createdBy: (data['createdBy'] ?? '').toString(),
       createdAt: data['createdAt'] as Timestamp?,
+      status: (data['status'] ?? 'Upcoming').toString(),
+      startDate: data['startDate'] as Timestamp?,
+      endDate: data['endDate'] as Timestamp?,
+      judgingRules: Map<String, dynamic>.from(
+        data['judgingRules'] ?? const <String, dynamic>{},
+      ),
+      submissionRequirements: Map<String, dynamic>.from(
+        data['submissionRequirements'] ?? const <String, dynamic>{},
+      ),
     );
   }
 
