@@ -1,0 +1,415 @@
+GestureDetector(
+
+                                    onTap:
+                                        () {
+
+                                      setModalState(() {
+
+                                        if (isSelected) {
+
+                                          selectedHackathonId =
+                                              null;
+
+                                          selectedHackathonName =
+                                              null;
+
+                                          selectedTeams =
+                                              [];
+
+                                        } else {
+
+                                          selectedHackathonId =
+                                              hackathon[
+                                                  "id"];
+
+                                          selectedHackathonName =
+                                              hackathon[
+                                                  "name"];
+
+                                          selectedTeams =
+                                              [];
+                                        }
+                                      });
+                                    },
+
+                                    child:
+                                        Padding(
+
+                                      padding:
+                                          const EdgeInsets.all(
+                                              18),
+
+                                      child:
+                                          Row(
+
+                                        children: [
+
+                                          Container(
+
+                                            width:
+                                                50,
+
+                                            height:
+                                                50,
+
+                                            decoration:
+                                                BoxDecoration(
+
+                                              color:
+                                                  const Color(
+                                                      0xFFF3F0FF),
+
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                      16),
+                                            ),
+
+                                            child:
+                                                const Icon(
+
+                                              Icons
+                                                  .emoji_events_outlined,
+
+                                              color:
+                                                  Color(
+                                                      0xFF7C3AED),
+                                            ),
+                                          ),
+
+                                          const SizedBox(
+                                              width:
+                                                  14),
+
+                                          Expanded(
+
+                                            child:
+                                                Column(
+
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+
+                                              children: [
+
+                                                Text(
+
+                                                  hackathon[
+                                                      "name"],
+
+                                                  style:
+                                                      const TextStyle(
+
+                                                    fontWeight:
+                                                        FontWeight.bold,
+
+                                                    fontSize:
+                                                        16,
+                                                  ),
+                                                ),
+
+                                                const SizedBox(
+                                                    height:
+                                                        6),
+
+                                                Text(
+
+                                                  "${teams.length} Teams",
+
+                                                  style:
+                                                      TextStyle(
+
+                                                    color: Colors
+                                                        .grey
+                                                        .shade600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+
+                                  //////////////////////////////////////////////////
+                                  /// TEAM LIST
+                                  //////////////////////////////////////////////////
+
+                                  if (isSelected)
+
+                                    Padding(
+
+                                      padding:
+                                          const EdgeInsets.fromLTRB(
+                                        18,
+                                        0,
+                                        18,
+                                        18,
+                                      ),
+
+                                      child:
+                                          Column(
+
+                                        children: [
+
+                                          const Divider(),
+
+                                          ...teams.map<Widget>(
+
+                                            (team) {
+
+                                              final bool
+                                                  alreadySelected =
+                                                  selectedTeams.any(
+
+                                                (e) =>
+
+                                                    e["teamId"] ==
+                                                    team["id"],
+                                              );
+
+                                              final bool
+                                                  alreadyAssigned =
+                                                  team["judgeAssigned"] ==
+                                                      true;
+
+                                              return Container(
+
+                                                margin:
+                                                    const EdgeInsets.only(
+                                                  bottom:
+                                                      12,
+                                                ),
+
+                                                padding:
+                                                    const EdgeInsets.all(
+                                                        14),
+
+                                                decoration:
+                                                    BoxDecoration(
+
+                                                  color:
+                                                      const Color(
+                                                          0xFFF8F8FC),
+
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          18),
+                                                ),
+
+                                                child:
+                                                    Row(
+
+                                                  children: [
+
+                                                    Expanded(
+
+                                                      child:
+                                                          Column(
+
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment.start,
+
+                                                        children: [
+
+                                                          Text(
+
+                                                            team["name"],
+
+                                                            style:
+                                                                const TextStyle(
+
+                                                              fontWeight:
+                                                                  FontWeight.bold,
+                                                            ),
+                                                          ),
+
+                                                          const SizedBox(
+                                                              height:
+                                                                  6),
+
+                                                          Text(
+
+                                                            team["teamCode"],
+
+                                                            style:
+                                                                const TextStyle(
+
+                                                              color:
+                                                                  Colors.grey,
+                                                            ),
+                                                          ),
+
+                                                          const SizedBox(
+                                                              height:
+                                                                  10),
+
+                                                          Row(
+
+                                                            children: [
+
+                                                              Container(
+
+                                                                padding:
+                                                                    const EdgeInsets.symmetric(
+
+                                                                  horizontal:
+                                                                      10,
+
+                                                                  vertical:
+                                                                      5,
+                                                                ),
+
+                                                                decoration:
+                                                                    BoxDecoration(
+
+                                                                  color: alreadyAssigned
+
+                                                                      ? const Color(
+                                                                          0xFFDCFCE7)
+
+                                                                      : const Color(
+                                                                          0xFFEDE9FE),
+
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                          20),
+                                                                ),
+
+                                                                child:
+                                                                    Text(
+
+                                                                  alreadyAssigned
+
+                                                                      ? "Assigned"
+
+                                                                      : "Available",
+
+                                                                  style:
+                                                                      TextStyle(
+
+                                                                    color: alreadyAssigned
+
+                                                                        ? const Color(
+                                                                            0xFF166534)
+
+                                                                        : const Color(
+                                                                            0xFF5B3FFF),
+
+                                                                    fontSize:
+                                                                        11,
+
+                                                                    fontWeight:
+                                                                        FontWeight.w600,
+                                                                  ),
+                                                                ),
+                                                              ),
+
+                                                              if (alreadyAssigned)
+
+                                                                Padding(
+
+                                                                  padding:
+                                                                      const EdgeInsets.only(
+                                                                    left:
+                                                                        8,
+                                                                  ),
+
+                                                                  child:
+                                                                      Text(
+
+                                                                    "Judge: ${team["judgeName"] ?? ""}",
+
+                                                                    style:
+                                                                        const TextStyle(
+
+                                                                      fontSize:
+                                                                          12,
+
+                                                                      color:
+                                                                          Colors.grey,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                            ],
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+
+                                                    //////////////////////////////////////////////////
+                                                    /// CHECKBOX
+                                                    //////////////////////////////////////////////////
+
+                                                    Checkbox(
+
+                                                      value:
+                                                          alreadySelected,
+
+                                                      activeColor:
+                                                          const Color(
+                                                              0xFF5B3FFF),
+
+                                                      onChanged:
+                                                          (_) {
+
+                                                        if (alreadyAssigned &&
+                                                            team["judgeId"] !=
+                                                                widget.judge["id"]) {
+
+                                                          ScaffoldMessenger.of(
+                                                                  context)
+                                                              .showSnackBar(
+
+                                                            const SnackBar(
+
+                                                              content: Text(
+                                                                "This team already has a judge assigned",
+                                                              ),
+                                                            ),
+                                                          );
+
+                                                          return;
+                                                        }
+
+                                                        setModalState(() {
+
+                                                          if (alreadySelected) {
+
+                                                            selectedTeams.removeWhere(
+
+                                                              (e) =>
+
+                                                                  e["teamId"] ==
+                                                                  team["id"],
+                                                            );
+
+                                                          } else {
+
+                                                            selectedTeams.add({
+
+                                                              "teamId":
+                                                                  team["id"],
+
+                                                              "teamName":
+                                                                  team["name"],
+                                                            });
+                                                          }
+                                                        });
+                                                      },
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
