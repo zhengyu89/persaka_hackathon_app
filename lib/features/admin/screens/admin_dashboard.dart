@@ -399,7 +399,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const AssignJudgesScreen(),
+                              builder: (_) => const AdminManageJudgesScreen(),
                             ),
                           );
                         },

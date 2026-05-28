@@ -61,13 +61,14 @@ class _AdminManageHackathonsScreenState
     }
 
     return hackathons.where((hackathon) {
-      final searchable = [
-        hackathon.title,
-        hackathon.status,
-        _formatDate(hackathon.startDate?.toDate()),
-        _formatDate(hackathon.endDate?.toDate()),
-        _formatDate(hackathon.createdAt?.toDate()),
-      ].join(' ').toLowerCase();
+      final searchable =
+          [
+            hackathon.title,
+            hackathon.status,
+            _formatDate(hackathon.startDate?.toDate()),
+            _formatDate(hackathon.endDate?.toDate()),
+            _formatDate(hackathon.createdAt?.toDate()),
+          ].join(' ').toLowerCase();
       return searchable.contains(query);
     }).toList();
   }
@@ -266,10 +267,7 @@ class _HackathonSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
     return SizedBox.expand(
       child: Container(
         color: const Color(0xFFF3F4F6),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 8,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         alignment: Alignment.center,
         child: child,
       ),
@@ -467,6 +465,7 @@ class _AdminAddHackathonScreenState extends State<AdminAddHackathonScreen> {
             .set(payload, SetOptions(merge: true));
       } else {
         payload['registeredTeams'] = <String>[];
+        payload['judgeAssignments'] = <String, dynamic>{};
         payload['createdAt'] = FieldValue.serverTimestamp();
         payload['createdBy'] = FirebaseAuth.instance.currentUser?.email;
         payload['judgingRules'] = {
@@ -843,9 +842,9 @@ class _HackathonAdminCard extends StatelessWidget {
           .doc(hackathon.id)
           .delete();
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Hackathon deleted.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Hackathon deleted.')));
       }
     } catch (error) {
       if (context.mounted) {
@@ -888,9 +887,8 @@ class _HackathonAdminCard extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder:
-                            (_) => AdminAddHackathonScreen(
-                              hackathon: hackathon,
-                            ),
+                            (_) =>
+                                AdminAddHackathonScreen(hackathon: hackathon),
                       ),
                     );
                   },
@@ -935,7 +933,7 @@ class _HackathonAdminCard extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const AssignJudgesScreen(),
+                        builder: (_) => const AdminManageJudgesScreen(),
                       ),
                     );
                   },
@@ -959,170 +957,176 @@ class _HackathonAdminCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x120F172A),
-            blurRadius: 18,
-            offset: Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              HackathonCover(
-                imageBase64: hackathon.imageBase64,
-                height: 180,
-                placeholderLabel: 'No poster uploaded',
-              ),
-              Positioned(
-                top: 12,
-                right: 12,
-                child: Material(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  child: InkWell(
-                    onTap: () => _showSettingsSheet(context),
+    return GestureDetector(
+      onTap: () => _openSettings(context),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x120F172A),
+              blurRadius: 18,
+              offset: Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                HackathonCover(
+                  imageBase64: hackathon.imageBase64,
+                  height: 180,
+                  placeholderLabel: 'No poster uploaded',
+                ),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: Material(
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
-                    child: const Padding(
-                      padding: EdgeInsets.all(10),
-                      child: Icon(
-                        Icons.more_vert_rounded,
-                        color: Color(0xFF4F39F6),
+                    child: InkWell(
+                      onTap: () => _showSettingsSheet(context),
+                      borderRadius: BorderRadius.circular(14),
+                      child: const Padding(
+                        padding: EdgeInsets.all(10),
+                        child: Icon(
+                          Icons.more_vert_rounded,
+                          color: Color(0xFF4F39F6),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              Positioned(
-                top: 12,
-                left: 12,
-                child: _StatusChip(
-                  label: hackathon.status,
-                  color: _statusColor(hackathon.status),
-                  backgroundColor: _statusBackgroundColor(hackathon.status),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      hackathon.title,
-                      style: const TextStyle(
-                        color: Color(0xFF111827),
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      hackathon.description.isEmpty
-                          ? 'No description'
-                          : hackathon.description,
-                      style: const TextStyle(
-                        color: Color(0xFF6B7280),
-                        fontSize: 13,
-                        height: 1.45,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEEF2FF),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  '${hackathon.registeredTeams.length} Teams',
-                  style: const TextStyle(
-                    color: Color(0xFF4F39F6),
-                    fontWeight: FontWeight.w700,
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: _StatusChip(
+                    label: hackathon.status,
+                    color: _statusColor(hackathon.status),
+                    backgroundColor: _statusBackgroundColor(hackathon.status),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _StatusChip(
-                label:
-                    hackathon.hasParticipantFormUrl
-                        ? 'Participant Form Ready'
-                        : 'Participant Form Missing',
-                color:
-                    hackathon.hasParticipantFormUrl
-                        ? const Color(0xFF16A34A)
-                        : const Color(0xFFD97706),
-                backgroundColor:
-                    hackathon.hasParticipantFormUrl
-                        ? const Color(0xFFDCFCE7)
-                        : const Color(0xFFFEF3C7),
-              ),
-              _StatusChip(
-                label:
-                    hackathon.hasReviewUrl
-                        ? 'Review URL Ready'
-                        : 'Review URL Missing',
-                color:
-                    hackathon.hasReviewUrl
-                        ? const Color(0xFF2563EB)
-                        : const Color(0xFFDC2626),
-                backgroundColor:
-                    hackathon.hasReviewUrl
-                        ? const Color(0xFFDBEAFE)
-                        : const Color(0xFFFEE2E2),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              const Icon(
-                Icons.schedule_rounded,
-                size: 16,
-                color: Color(0xFF6B7280),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  _dateLabel(),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        hackathon.title,
+                        style: const TextStyle(
+                          color: Color(0xFF111827),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        hackathon.description.isEmpty
+                            ? 'No description'
+                            : hackathon.description,
+                        style: const TextStyle(
+                          color: Color(0xFF6B7280),
+                          fontSize: 13,
+                          height: 1.45,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEEF2FF),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '${hackathon.registeredTeams.length} Teams',
+                    style: const TextStyle(
+                      color: Color(0xFF4F39F6),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _StatusChip(
+                  label:
+                      hackathon.hasParticipantFormUrl
+                          ? 'Participant Form Ready'
+                          : 'Participant Form Missing',
+                  color:
+                      hackathon.hasParticipantFormUrl
+                          ? const Color(0xFF16A34A)
+                          : const Color(0xFFD97706),
+                  backgroundColor:
+                      hackathon.hasParticipantFormUrl
+                          ? const Color(0xFFDCFCE7)
+                          : const Color(0xFFFEF3C7),
+                ),
+                _StatusChip(
+                  label:
+                      hackathon.hasReviewUrl
+                          ? 'Review URL Ready'
+                          : 'Review URL Missing',
+                  color:
+                      hackathon.hasReviewUrl
+                          ? const Color(0xFF2563EB)
+                          : const Color(0xFFDC2626),
+                  backgroundColor:
+                      hackathon.hasReviewUrl
+                          ? const Color(0xFFDBEAFE)
+                          : const Color(0xFFFEE2E2),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Icon(
+                  Icons.schedule_rounded,
+                  size: 16,
+                  color: Color(0xFF6B7280),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _dateLabel(),
+                    style: const TextStyle(
+                      color: Color(0xFF6B7280),
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                Text(
+                  'Organizer ${_organizerName(hackathon.createdBy)}',
                   style: const TextStyle(
-                    color: Color(0xFF6B7280),
+                    color: Color(0xFF9CA3AF),
                     fontSize: 12,
                   ),
                 ),
-              ),
-              Text(
-                'Organizer ${_organizerName(hackathon.createdBy)}',
-                style: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 12),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
