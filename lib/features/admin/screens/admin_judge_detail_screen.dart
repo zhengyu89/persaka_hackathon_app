@@ -1,22 +1,44 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+Map<String, Map<String, dynamic>> _hackathonJudgeAssignmentMap(
+  Object? rawAssignments,
+) {
+  if (rawAssignments is Map) {
+    return rawAssignments.map((key, value) {
+      return MapEntry(
+        key.toString(),
+        value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{},
+      );
+    });
+  }
+
+  if (rawAssignments is List) {
+    final normalized = <String, Map<String, dynamic>>{};
+    for (final assignment in rawAssignments.whereType<Map>()) {
+      final data = Map<String, dynamic>.from(assignment);
+      final teamCode = (data["teamCode"] ?? data["teamId"] ?? "").toString();
+      if (teamCode.isNotEmpty) {
+        normalized[teamCode] = data;
+      }
+    }
+    return normalized;
+  }
+
+  return const <String, Map<String, dynamic>>{};
+}
+
 class AdminJudgesDetailScreen extends StatefulWidget {
   final Map<String, dynamic> judge;
 
-  const AdminJudgesDetailScreen({
-    super.key,
-    required this.judge,
-  });
+  const AdminJudgesDetailScreen({super.key, required this.judge});
 
   @override
   State<AdminJudgesDetailScreen> createState() =>
       _AdminJudgesDetailScreenState();
 }
 
-class _AdminJudgesDetailScreenState
-    extends State<AdminJudgesDetailScreen> {
-
+class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
   ////////////////////////////////////////////////////////////
   /// VARIABLES
   ////////////////////////////////////////////////////////////
@@ -40,92 +62,65 @@ class _AdminJudgesDetailScreenState
   ////////////////////////////////////////////////////////////
 
   Future<void> loadHackathons() async {
-
     try {
-
       final hackathonSnapshot =
-          await FirebaseFirestore.instance
-              .collection("hackathons")
-              .get();
+          await FirebaseFirestore.instance.collection("hackathons").get();
 
-      List<Map<String, dynamic>>
-          loadedHackathons = [];
+      List<Map<String, dynamic>> loadedHackathons = [];
 
-      for (var hackathonDoc
-          in hackathonSnapshot.docs) {
+      for (var hackathonDoc in hackathonSnapshot.docs) {
+        final data = hackathonDoc.data();
 
-        final data =
-            hackathonDoc.data();
+        List registeredTeams = data["registeredTeams"] ?? [];
+        final judgeAssignments = _hackathonJudgeAssignmentMap(
+          data["judgeAssignments"],
+        );
 
-        List registeredTeams =
-            data["registeredTeams"] ?? [];
+        List<Map<String, dynamic>> teams = [];
 
-        List<Map<String, dynamic>>
-            teams = [];
-
-        for (String teamCode
-            in registeredTeams) {
-
+        for (String teamCode in registeredTeams) {
           final teamDoc =
-              await FirebaseFirestore
-                  .instance
+              await FirebaseFirestore.instance
                   .collection("teams")
                   .doc(teamCode)
                   .get();
 
           if (teamDoc.exists) {
+            final teamData = teamDoc.data()!;
 
-            final teamData =
-                teamDoc.data()!;
+            final assignment =
+                judgeAssignments[teamDoc.id] ??
+                judgeAssignments[(teamData["teamCode"] ?? teamDoc.id)
+                    .toString()];
 
             teams.add({
+              "id": teamDoc.id,
 
-              "id":
-                  teamDoc.id,
+              "name": teamData["teamName"] ?? "",
 
-              "name":
-                  teamData["teamName"] ??
-                      "",
+              "teamCode": teamData["teamCode"] ?? "",
 
-              "teamCode":
-                  teamData["teamCode"] ??
-                      "",
+              "judgeAssigned": assignment != null,
 
-              "judgeAssigned":
-                  teamData["judgeAssigned"] ??
-                      false,
+              "judgeId": assignment?["judgeId"],
 
-              "judgeId":
-                  teamData["judgeId"],
-
-              "judgeName":
-                  teamData["judgeName"],
+              "judgeName": assignment?["judgeName"],
             });
           }
         }
 
         loadedHackathons.add({
+          "id": hackathonDoc.id,
 
-          "id":
-              hackathonDoc.id,
+          "name": data["title"] ?? "Hackathon",
 
-          "name":
-              data["title"] ??
-                  "Hackathon",
-
-          "teams":
-              teams,
+          "teams": teams,
         });
       }
 
-      hackathons =
-          loadedHackathons;
-
+      hackathons = loadedHackathons;
     } catch (e) {
-
-      debugPrint(
-        "LOAD HACKATHON ERROR: $e",
-      );
+      debugPrint("LOAD HACKATHON ERROR: $e");
     }
 
     isLoading = false;
@@ -137,129 +132,52 @@ class _AdminJudgesDetailScreenState
   /// REMOVE ASSIGNMENT
   ////////////////////////////////////////////////////////////
 
-  Future<void> removeAssignment(
-    int assignmentIndex,
-  ) async {
-
+  Future<void> removeAssignment(int assignmentIndex) async {
     try {
+      final assignments = List.from(widget.judge["assignments"] ?? []);
 
-      final assignments =
-          List.from(
-        widget.judge[
-                "assignments"] ??
-            [],
-      );
-
-      final assignment =
-          assignments[
-              assignmentIndex];
-
-      ////////////////////////////////////////////////////////
-      /// REMOVE TEAMS
-      ////////////////////////////////////////////////////////
-
-      for (var team
-          in assignment[
-              "teams"]) {
-
-        final String teamId =
-            team["teamId"];
-
-        await FirebaseFirestore
-            .instance
-            .collection("teams")
-            .doc(teamId)
-            .update({
-
-          "judgeAssigned":
-              false,
-
-          "judgeId":
-              null,
-
-          "judgeName":
-              null,
-
-          "hackathonId":
-              null,
-
-          "hackathonName":
-              null,
-        });
-      }
+      final assignment = assignments[assignmentIndex];
 
       ////////////////////////////////////////////////////////
       /// REMOVE HACKATHON ASSIGNMENT
       ////////////////////////////////////////////////////////
 
-      final hackathonRef =
-          FirebaseFirestore.instance
-              .collection("hackathons")
-              .doc(
-                assignment[
-                    "hackathonId"],
-              );
+      final hackathonRef = FirebaseFirestore.instance
+          .collection("hackathons")
+          .doc(assignment["hackathonId"]);
 
-      final hackathonDoc =
-          await hackathonRef.get();
+      final hackathonDoc = await hackathonRef.get();
 
-      final hackathonData =
-          hackathonDoc.data() ?? {};
+      final hackathonData = hackathonDoc.data() ?? {};
 
-      List<dynamic>
-          judgeAssignments =
-          List.from(
-        hackathonData[
-                "judgeAssignments"] ??
-            [],
-      );
+      Map<String, Map<String, dynamic>> judgeAssignments =
+          _hackathonJudgeAssignmentMap(hackathonData["judgeAssignments"]);
 
       judgeAssignments.removeWhere(
-
-        (a) =>
-
-            a["judgeId"] ==
-                widget.judge["id"] &&
-
-            a["hackathonId"] ==
-                assignment[
-                    "hackathonId"],
+        (teamCode, scopedAssignment) =>
+            scopedAssignment["judgeId"] == widget.judge["id"] &&
+            (scopedAssignment["hackathonId"] ?? assignment["hackathonId"]) ==
+                assignment["hackathonId"],
       );
 
-      await hackathonRef.update({
-
-        "judgeAssignments":
-            judgeAssignments,
-      });
+      await hackathonRef.update({"judgeAssignments": judgeAssignments});
 
       ////////////////////////////////////////////////////////
       /// REMOVE USER ASSIGNMENT
       ////////////////////////////////////////////////////////
 
-      assignments.removeAt(
-          assignmentIndex);
+      assignments.removeAt(assignmentIndex);
 
-      await FirebaseFirestore
-          .instance
+      await FirebaseFirestore.instance
           .collection("users")
           .doc(widget.judge["id"])
-          .update({
+          .update({"assignments": assignments});
 
-        "assignments":
-            assignments,
-      });
-
-      widget.judge[
-              "assignments"] =
-          assignments;
+      widget.judge["assignments"] = assignments;
 
       setState(() {});
-
     } catch (e) {
-
-      debugPrint(
-        "REMOVE ERROR: $e",
-      );
+      debugPrint("REMOVE ERROR: $e");
     }
   }
 
@@ -267,474 +185,231 @@ class _AdminJudgesDetailScreenState
   /// EDIT ASSIGNMENT
   ////////////////////////////////////////////////////////////
 
-  void editAssignment(
-    int assignmentIndex,
-  ) {
+  void editAssignment(int assignmentIndex) {
+    final assignment = widget.judge["assignments"][assignmentIndex];
 
-    final assignment =
-        widget.judge[
-            "assignments"]
-            [assignmentIndex];
+    List<dynamic> editableTeams = List.from(assignment["teams"]);
 
-    List<dynamic>
-        editableTeams =
-        List.from(
-      assignment["teams"],
-    );
-
-    final currentHackathon =
-        hackathons.firstWhere(
-
-      (h) =>
-          h["id"] ==
-          assignment[
-              "hackathonId"],
+    final currentHackathon = hackathons.firstWhere(
+      (h) => h["id"] == assignment["hackathonId"],
 
       orElse: () => {},
     );
 
-    final List availableTeams =
-        currentHackathon[
-                "teams"] ??
-            [];
+    final List availableTeams = currentHackathon["teams"] ?? [];
 
     showModalBottomSheet(
-
       context: context,
 
       isScrollControlled: true,
 
-      backgroundColor:
-          Colors.white,
+      backgroundColor: Colors.white,
 
-      shape:
-          const RoundedRectangleBorder(
-
-        borderRadius:
-            BorderRadius.vertical(
-
-          top:
-              Radius.circular(
-                  28),
-        ),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
 
       builder: (context) {
-
         return StatefulBuilder(
-
-          builder: (
-            context,
-            setModalState,
-          ) {
-
+          builder: (context, setModalState) {
             return Padding(
-
-              padding:
-                  const EdgeInsets.all(
-                      20),
+              padding: const EdgeInsets.all(20),
 
               child: Column(
-
                 children: [
-
                   Row(
-
                     children: [
-
                       const Expanded(
-
                         child: Text(
-
                           "Edit Assignment",
 
-                          style:
-                              TextStyle(
+                          style: TextStyle(
+                            fontSize: 24,
 
-                            fontSize:
-                                24,
-
-                            fontWeight:
-                                FontWeight.bold,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
 
                       IconButton(
-
                         onPressed: () {
-
-                          Navigator.pop(
-                              context);
+                          Navigator.pop(context);
                         },
 
-                        icon:
-                            const Icon(
-                          Icons.close,
-                        ),
+                        icon: const Icon(Icons.close),
                       ),
                     ],
                   ),
 
-                  const SizedBox(
-                      height:
-                          20),
+                  const SizedBox(height: 20),
 
                   Expanded(
-
                     child: ListView(
-
                       children: [
+                        ...availableTeams.map((team) {
+                          final bool alreadySelected = editableTeams.any(
+                            (e) => e["teamId"] == team["id"],
+                          );
 
-                        ...availableTeams.map(
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
 
-                          (team) {
+                            padding: const EdgeInsets.all(14),
 
-                            final bool
-                                alreadySelected =
-                                editableTeams.any(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF7F7FA),
 
-                              (e) =>
+                              borderRadius: BorderRadius.circular(18),
+                            ),
 
-                                  e["teamId"] ==
-                                  team["id"],
-                            );
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
 
-                            return Container(
+                                    children: [
+                                      Text(
+                                        team["name"],
 
-                              margin:
-                                  const EdgeInsets.only(
-                                bottom:
-                                    12,
-                              ),
-
-                              padding:
-                                  const EdgeInsets.all(
-                                      14),
-
-                              decoration:
-                                  BoxDecoration(
-
-                                color:
-                                    const Color(
-                                        0xFFF7F7FA),
-
-                                borderRadius:
-                                    BorderRadius.circular(
-                                        18),
-                              ),
-
-                              child:
-                                  Row(
-
-                                children: [
-
-                                  Expanded(
-
-                                    child:
-                                        Column(
-
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-
-                                      children: [
-
-                                        Text(
-
-                                          team[
-                                              "name"],
-
-                                          style:
-                                              const TextStyle(
-
-                                            fontWeight:
-                                                FontWeight.bold,
-                                          ),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
                                         ),
+                                      ),
 
-                                        const SizedBox(
-                                            height:
-                                                6),
+                                      const SizedBox(height: 6),
 
-                                        Text(
+                                      Text(
+                                        team["teamCode"],
 
-                                          team[
-                                              "teamCode"],
-
-                                          style:
-                                              const TextStyle(
-
-                                            color:
-                                                Colors.grey,
-                                          ),
+                                        style: const TextStyle(
+                                          color: Colors.grey,
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
+                                ),
 
-                                  Checkbox(
+                                Checkbox(
+                                  value: alreadySelected,
 
-                                    value:
-                                        alreadySelected,
+                                  onChanged: (_) {
+                                    setModalState(() {
+                                      if (alreadySelected) {
+                                        editableTeams.removeWhere(
+                                          (e) => e["teamId"] == team["id"],
+                                        );
+                                      } else {
+                                        editableTeams.add({
+                                          "teamId": team["id"],
 
-                                    onChanged:
-                                        (_) {
-
-                                      setModalState(() {
-
-                                        if (alreadySelected) {
-
-                                          editableTeams.removeWhere(
-
-                                            (e) =>
-
-                                                e["teamId"] ==
-                                                team["id"],
-                                          );
-
-                                        } else {
-
-                                          editableTeams.add({
-
-                                            "teamId":
-                                                team["id"],
-
-                                            "teamName":
-                                                team["name"],
-                                          });
-                                        }
-                                      });
-                                    },
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
+                                          "teamName": team["name"],
+                                        });
+                                      }
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
                       ],
                     ),
                   ),
 
-                  const SizedBox(
-                      height:
-                          20),
+                  const SizedBox(height: 20),
 
                   SizedBox(
+                    width: double.infinity,
 
-                    width:
-                        double.infinity,
+                    height: 56,
 
-                    height:
-                        56,
-
-                    child:
-                        ElevatedButton(
-
-                      style:
-                          ElevatedButton.styleFrom(
-
-                        backgroundColor:
-                            const Color(
-                                0xFF5B3FFF),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF5B3FFF),
                       ),
 
-                      onPressed:
-                          () async {
-
+                      onPressed: () async {
                         //////////////////////////////////////////////////////
                         /// REMOVE OLD ASSIGNMENTS
                         //////////////////////////////////////////////////////
 
-                        final hackathonRef =
-                            FirebaseFirestore
-                                .instance
-                                .collection(
-                                    "hackathons")
-                                .doc(
-                                  assignment[
-                                      "hackathonId"],
-                                );
+                        final hackathonRef = FirebaseFirestore.instance
+                            .collection("hackathons")
+                            .doc(assignment["hackathonId"]);
 
-                        final hackathonDoc =
-                            await hackathonRef
-                                .get();
+                        final hackathonDoc = await hackathonRef.get();
 
-                        final hackathonData =
-                            hackathonDoc
-                                    .data() ??
-                                {};
+                        final hackathonData = hackathonDoc.data() ?? {};
 
-                        List<dynamic>
-                            judgeAssignments =
-                            List.from(
-
-                          hackathonData[
-                                  "judgeAssignments"] ??
-                              [],
-                        );
+                        Map<String, Map<String, dynamic>> judgeAssignments =
+                            _hackathonJudgeAssignmentMap(
+                              hackathonData["judgeAssignments"],
+                            );
 
                         judgeAssignments.removeWhere(
-
-                          (a) =>
-
-                              a["judgeId"] ==
-                              widget.judge[
-                                  "id"],
+                          (teamCode, scopedAssignment) =>
+                              scopedAssignment["judgeId"] == widget.judge["id"],
                         );
-
-                        //////////////////////////////////////////////////////
-                        /// REMOVE OLD TEAM DATA
-                        //////////////////////////////////////////////////////
-
-                        for (var team
-                            in assignment[
-                                "teams"]) {
-
-                          final String
-                              oldTeamId =
-                              team[
-                                  "teamId"];
-
-                          await FirebaseFirestore
-                              .instance
-                              .collection(
-                                  "teams")
-                              .doc(
-                                  oldTeamId)
-                              .update({
-
-                            "judgeAssigned":
-                                false,
-
-                            "judgeId":
-                                null,
-
-                            "judgeName":
-                                null,
-                          });
-                        }
 
                         //////////////////////////////////////////////////////
                         /// ADD NEW TEAM ASSIGNMENT
                         //////////////////////////////////////////////////////
 
-                        for (var team
-                            in editableTeams) {
+                        for (var team in editableTeams) {
+                          final teamCode = team["teamId"].toString();
 
-                          await FirebaseFirestore
-                              .instance
-                              .collection(
-                                  "teams")
-                              .doc(
-                                  team["teamId"])
-                              .update({
+                          judgeAssignments[teamCode] = {
+                            "judgeId": widget.judge["id"],
 
-                            "judgeAssigned":
-                                true,
+                            "judgeName": widget.judge["name"],
 
-                            "judgeId":
-                                widget
-                                    .judge["id"],
+                            "teamId": teamCode,
 
-                            "judgeName":
-                                widget
-                                    .judge["name"],
+                            "teamName": team["teamName"],
 
-                            "hackathonId":
-                                assignment[
-                                    "hackathonId"],
+                            "hackathonId": assignment["hackathonId"],
 
-                            "hackathonName":
-                                assignment[
-                                    "hackathon"],
-                          });
+                            "hackathonName": assignment["hackathon"],
 
-                          judgeAssignments
-                              .add({
-
-                            "judgeId":
-                                widget
-                                    .judge["id"],
-
-                            "judgeName":
-                                widget
-                                    .judge["name"],
-
-                            "teamId":
-                                team[
-                                    "teamId"],
-
-                            "teamName":
-                                team[
-                                    "teamName"],
-
-                            "hackathonId":
-                                assignment[
-                                    "hackathonId"],
-
-                            "hackathonName":
-                                assignment[
-                                    "hackathon"],
-
-                            "assignedAt":
-                                Timestamp.now(),
-                          });
+                            "assignedAt": Timestamp.now(),
+                          };
                         }
 
                         //////////////////////////////////////////////////////
                         /// UPDATE HACKATHON
                         //////////////////////////////////////////////////////
 
-                        await hackathonRef
-                            .update({
-
-                          "judgeAssignments":
-                              judgeAssignments,
+                        await hackathonRef.update({
+                          "judgeAssignments": judgeAssignments,
                         });
 
                         //////////////////////////////////////////////////////
                         /// UPDATE USER
                         //////////////////////////////////////////////////////
 
-                        widget.judge[
-                                    "assignments"]
-                                [
-                                assignmentIndex]
-                            ["teams"] =
+                        widget.judge["assignments"][assignmentIndex]["teams"] =
                             editableTeams;
 
-                        await FirebaseFirestore
-                            .instance
-                            .collection(
-                                "users")
-                            .doc(widget
-                                    .judge[
-                                "id"])
+                        await FirebaseFirestore.instance
+                            .collection("users")
+                            .doc(widget.judge["id"])
                             .update({
+                              "assignments": widget.judge["assignments"],
+                            });
 
-                          "assignments":
-                              widget.judge[
-                                  "assignments"],
-                        });
-
-                        Navigator.pop(
-                            context);
+                        Navigator.pop(context);
 
                         await loadHackathons();
 
                         setState(() {});
                       },
 
-                      child:
-                          const Text(
-
+                      child: const Text(
                         "Save Changes",
 
-                        style:
-                            TextStyle(
-                          color:
-                              Colors.white,
-                        ),
+                        style: TextStyle(color: Colors.white),
                       ),
                     ),
                   ),
@@ -752,779 +427,474 @@ class _AdminJudgesDetailScreenState
   ////////////////////////////////////////////////////////////
 
   void showAssignHackathonSheet() {
-
     String? selectedHackathonId;
     String? selectedHackathonName;
 
-    List<Map<String, dynamic>>
-        selectedTeams = [];
+    List<Map<String, dynamic>> selectedTeams = [];
 
     showModalBottomSheet(
-
       context: context,
 
       isScrollControlled: true,
 
-      backgroundColor:
-          Colors.transparent,
+      backgroundColor: Colors.transparent,
 
       builder: (context) {
-
         return StatefulBuilder(
-
-          builder: (
-            context,
-            setModalState,
-          ) {
-
+          builder: (context, setModalState) {
             return Container(
+              height: MediaQuery.of(context).size.height * .88,
 
-              height:
-                  MediaQuery.of(context)
-                          .size
-                          .height *
-                      .88,
+              padding: const EdgeInsets.all(20),
 
-              padding:
-                  const EdgeInsets.all(
-                      20),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF7F7FA),
 
-              decoration:
-                  const BoxDecoration(
-
-                color:
-                    Color(0xFFF7F7FA),
-
-                borderRadius:
-                    BorderRadius.vertical(
-
-                  top:
-                      Radius.circular(
-                          32),
-                ),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
               ),
 
               child: Column(
-
                 children: [
-
                   Row(
-
                     children: [
-
                       const Expanded(
-
                         child: Text(
-
                           "Assign Judge",
 
                           style: TextStyle(
-
                             fontSize: 26,
 
-                            fontWeight:
-                                FontWeight.bold,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
 
                       IconButton(
-
                         onPressed: () {
-
-                          Navigator.pop(
-                              context);
+                          Navigator.pop(context);
                         },
 
-                        icon:
-                            const Icon(
-                          Icons.close,
-                        ),
+                        icon: const Icon(Icons.close),
                       ),
                     ],
                   ),
 
-                  const SizedBox(
-                      height:
-                          20),
+                  const SizedBox(height: 20),
 
                   Expanded(
-
                     child: ListView(
-
                       children: [
+                        ...hackathons.map((hackathon) {
+                          final bool isSelected =
+                              selectedHackathonId == hackathon["id"];
 
-                        ...hackathons.map(
+                          final List teams = hackathon["teams"] ?? [];
 
-                          (hackathon) {
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 16),
 
-                            final bool
-                                isSelected =
-                                selectedHackathonId ==
-                                    hackathon[
-                                        "id"];
+                            decoration: BoxDecoration(
+                              color: Colors.white,
 
-                            final List teams =
-                                hackathon[
-                                        "teams"] ??
-                                    [];
+                              borderRadius: BorderRadius.circular(24),
 
-                            return Container(
-
-                              margin:
-                                  const EdgeInsets.only(
-                                bottom:
-                                    16,
-                              ),
-
-                              decoration:
-                                  BoxDecoration(
-
+                              border: Border.all(
                                 color:
-                                    Colors.white,
+                                    isSelected
+                                        ? const Color(0xFF5B3FFF)
+                                        : Colors.transparent,
 
-                                borderRadius:
-                                    BorderRadius.circular(
-                                        24),
-
-                                border:
-                                    Border.all(
-
-                                  color:
-                                      isSelected
-
-                                          ? const Color(
-                                              0xFF5B3FFF)
-
-                                          : Colors.transparent,
-
-                                  width:
-                                      2,
-                                ),
+                                width: 2,
                               ),
+                            ),
 
-                              child:
-                                  Column(
+                            child: Column(
+                              children: [
+                                GestureDetector(
+                                  onTap: () {
+                                    setModalState(() {
+                                      if (isSelected) {
+                                        selectedHackathonId = null;
 
-                                children: [
+                                        selectedHackathonName = null;
 
-                                  GestureDetector(
+                                        selectedTeams = [];
+                                      } else {
+                                        selectedHackathonId = hackathon["id"];
 
-                                    onTap:
-                                        () {
+                                        selectedHackathonName =
+                                            hackathon["name"];
 
-                                      setModalState(() {
+                                        selectedTeams = [];
+                                      }
+                                    });
+                                  },
 
-                                        if (isSelected) {
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(18),
 
-                                          selectedHackathonId =
-                                              null;
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 50,
 
-                                          selectedHackathonName =
-                                              null;
+                                          height: 50,
 
-                                          selectedTeams =
-                                              [];
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF3F0FF),
 
-                                        } else {
-
-                                          selectedHackathonId =
-                                              hackathon[
-                                                  "id"];
-
-                                          selectedHackathonName =
-                                              hackathon[
-                                                  "name"];
-
-                                          selectedTeams =
-                                              [];
-                                        }
-                                      });
-                                    },
-
-                                    child:
-                                        Padding(
-
-                                      padding:
-                                          const EdgeInsets.all(
-                                              18),
-
-                                      child:
-                                          Row(
-
-                                        children: [
-
-                                          Container(
-
-                                            width:
-                                                50,
-
-                                            height:
-                                                50,
-
-                                            decoration:
-                                                BoxDecoration(
-
-                                              color:
-                                                  const Color(
-                                                      0xFFF3F0FF),
-
-                                              borderRadius:
-                                                  BorderRadius.circular(
-                                                      16),
-                                            ),
-
-                                            child:
-                                                const Icon(
-
-                                              Icons
-                                                  .emoji_events_outlined,
-
-                                              color:
-                                                  Color(
-                                                      0xFF7C3AED),
+                                            borderRadius: BorderRadius.circular(
+                                              16,
                                             ),
                                           ),
 
-                                          const SizedBox(
-                                              width:
-                                                  14),
+                                          child: const Icon(
+                                            Icons.emoji_events_outlined,
 
-                                          Expanded(
-
-                                            child:
-                                                Column(
-
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-
-                                              children: [
-
-                                                Text(
-
-                                                  hackathon[
-                                                      "name"],
-
-                                                  style:
-                                                      const TextStyle(
-
-                                                    fontWeight:
-                                                        FontWeight.bold,
-
-                                                    fontSize:
-                                                        16,
-                                                  ),
-                                                ),
-
-                                                const SizedBox(
-                                                    height:
-                                                        6),
-
-                                                Text(
-
-                                                  "${teams.length} Teams",
-
-                                                  style:
-                                                      TextStyle(
-
-                                                    color: Colors
-                                                        .grey
-                                                        .shade600,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
+                                            color: Color(0xFF7C3AED),
                                           ),
-                                        ],
-                                      ),
+                                        ),
+
+                                        const SizedBox(width: 14),
+
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+
+                                            children: [
+                                              Text(
+                                                hackathon["name"],
+
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+
+                                              const SizedBox(height: 6),
+
+                                              Text(
+                                                "${teams.length} Teams",
+
+                                                style: TextStyle(
+                                                  color: Colors.grey.shade600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
+                                ),
 
-                                  if (isSelected)
+                                if (isSelected)
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      18,
+                                      0,
+                                      18,
+                                      18,
+                                    ),
 
-                                    Padding(
+                                    child: Column(
+                                      children: [
+                                        const Divider(),
 
-                                      padding:
-                                          const EdgeInsets.fromLTRB(
-                                        18,
-                                        0,
-                                        18,
-                                        18,
-                                      ),
-
-                                      child:
-                                          Column(
-
-                                        children: [
-
-                                          const Divider(),
-
-                                          ...teams.map<Widget>(
-
-                                            (team) {
-
-                                              final bool
-                                                  alreadySelected =
-                                                  selectedTeams.any(
-
+                                        ...teams.map<Widget>((team) {
+                                          final bool alreadySelected =
+                                              selectedTeams.any(
                                                 (e) =>
-
-                                                    e["teamId"] ==
-                                                    team["id"],
+                                                    e["teamId"] == team["id"],
                                               );
 
-                                              final bool
-                                                  alreadyAssigned =
-                                                  team["judgeAssigned"] ==
-                                                      true;
+                                          final bool alreadyAssigned =
+                                              team["judgeAssigned"] == true;
 
-                                              return Container(
+                                          return Container(
+                                            margin: const EdgeInsets.only(
+                                              bottom: 12,
+                                            ),
 
-                                                margin:
-                                                    const EdgeInsets.only(
-                                                  bottom:
-                                                      12,
-                                                ),
+                                            padding: const EdgeInsets.all(14),
 
-                                                padding:
-                                                    const EdgeInsets.all(
-                                                        14),
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFFF8F8FC),
 
-                                                decoration:
-                                                    BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(18),
+                                            ),
 
-                                                  color:
-                                                      const Color(
-                                                          0xFFF8F8FC),
+                                            child: Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
 
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          18),
-                                                ),
+                                                    children: [
+                                                      Text(
+                                                        team["name"],
 
-                                                child:
-                                                    Row(
+                                                        style: const TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
 
-                                                  children: [
+                                                      const SizedBox(height: 6),
 
-                                                    Expanded(
+                                                      Text(
+                                                        team["teamCode"],
 
-                                                      child:
-                                                          Column(
+                                                        style: const TextStyle(
+                                                          color: Colors.grey,
+                                                        ),
+                                                      ),
 
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment.start,
+                                                      const SizedBox(
+                                                        height: 10,
+                                                      ),
 
+                                                      Row(
                                                         children: [
-
-                                                          Text(
-
-                                                            team["name"],
-
-                                                            style:
-                                                                const TextStyle(
-
-                                                              fontWeight:
-                                                                  FontWeight.bold,
-                                                            ),
-                                                          ),
-
-                                                          const SizedBox(
-                                                              height:
-                                                                  6),
-
-                                                          Text(
-
-                                                            team["teamCode"],
-
-                                                            style:
-                                                                const TextStyle(
-
-                                                              color:
-                                                                  Colors.grey,
-                                                            ),
-                                                          ),
-
-                                                          const SizedBox(
-                                                              height:
-                                                                  10),
-
-                                                          Row(
-
-                                                            children: [
-
-                                                              Container(
-
-                                                                padding:
-                                                                    const EdgeInsets.symmetric(
-
+                                                          Container(
+                                                            padding:
+                                                                const EdgeInsets.symmetric(
                                                                   horizontal:
                                                                       10,
 
-                                                                  vertical:
-                                                                      5,
+                                                                  vertical: 5,
                                                                 ),
 
-                                                                decoration:
-                                                                    BoxDecoration(
-
-                                                                  color: alreadyAssigned
-
-                                                                      ? const Color(
-                                                                          0xFFDCFCE7)
-
-                                                                      : const Color(
-                                                                          0xFFEDE9FE),
-
-                                                                  borderRadius:
-                                                                      BorderRadius.circular(
-                                                                          20),
-                                                                ),
-
-                                                                child:
-                                                                    Text(
-
+                                                            decoration: BoxDecoration(
+                                                              color:
                                                                   alreadyAssigned
+                                                                      ? const Color(
+                                                                        0xFFDCFCE7,
+                                                                      )
+                                                                      : const Color(
+                                                                        0xFFEDE9FE,
+                                                                      ),
 
-                                                                      ? "Assigned"
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    20,
+                                                                  ),
+                                                            ),
 
-                                                                      : "Available",
+                                                            child: Text(
+                                                              alreadyAssigned
+                                                                  ? "Assigned"
+                                                                  : "Available",
 
-                                                                  style:
-                                                                      TextStyle(
-
-                                                                    color: alreadyAssigned
-
+                                                              style: TextStyle(
+                                                                color:
+                                                                    alreadyAssigned
                                                                         ? const Color(
-                                                                            0xFF166534)
-
+                                                                          0xFF166534,
+                                                                        )
                                                                         : const Color(
-                                                                            0xFF5B3FFF),
+                                                                          0xFF5B3FFF,
+                                                                        ),
 
-                                                                    fontSize:
-                                                                        11,
+                                                                fontSize: 11,
 
-                                                                    fontWeight:
-                                                                        FontWeight.w600,
-                                                                  ),
-                                                                ),
-                                                              ),
-
-                                                              if (alreadyAssigned)
-
-                                                                Padding(
-
-                                                                  padding:
-                                                                      const EdgeInsets.only(
-                                                                    left:
-                                                                        8,
-                                                                  ),
-
-                                                                  child:
-                                                                      Text(
-
-                                                                    "Judge: ${team["judgeName"] ?? ""}",
-
-                                                                    style:
-                                                                        const TextStyle(
-
-                                                                      fontSize:
-                                                                          12,
-
-                                                                      color:
-                                                                          Colors.grey,
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                            ],
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-
-                                                    //////////////////////////////////////////////////
-                                                    /// CHECKBOX
-                                                    //////////////////////////////////////////////////
-
-                                                    Checkbox(
-
-                                                      value:
-                                                          alreadySelected,
-
-                                                      activeColor:
-                                                          const Color(
-                                                              0xFF5B3FFF),
-
-                                                      onChanged:
-                                                          (_) {
-
-                                                        if (alreadyAssigned &&
-                                                            team["judgeId"] !=
-                                                                widget.judge["id"]) {
-
-                                                          ScaffoldMessenger.of(
-                                                                  context)
-                                                              .showSnackBar(
-
-                                                            const SnackBar(
-
-                                                              content: Text(
-                                                                "This team already has a judge assigned",
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
                                                               ),
                                                             ),
-                                                          );
+                                                          ),
 
-                                                          return;
-                                                        }
+                                                          if (alreadyAssigned)
+                                                            Padding(
+                                                              padding:
+                                                                  const EdgeInsets.only(
+                                                                    left: 8,
+                                                                  ),
 
-                                                        setModalState(() {
+                                                              child: Text(
+                                                                "Judge: ${team["judgeName"] ?? ""}",
 
-                                                          if (alreadySelected) {
+                                                                style: const TextStyle(
+                                                                  fontSize: 12,
 
-                                                            selectedTeams.removeWhere(
+                                                                  color:
+                                                                      Colors
+                                                                          .grey,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
 
+                                                //////////////////////////////////////////////////
+                                                /// CHECKBOX
+                                                //////////////////////////////////////////////////
+                                                Checkbox(
+                                                  value: alreadySelected,
+
+                                                  activeColor: const Color(
+                                                    0xFF5B3FFF,
+                                                  ),
+
+                                                  onChanged: (_) {
+                                                    if (alreadyAssigned &&
+                                                        team["judgeId"] !=
+                                                            widget
+                                                                .judge["id"]) {
+                                                      ScaffoldMessenger.of(
+                                                        context,
+                                                      ).showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text(
+                                                            "This team already has a judge assigned",
+                                                          ),
+                                                        ),
+                                                      );
+
+                                                      return;
+                                                    }
+
+                                                    setModalState(() {
+                                                      if (alreadySelected) {
+                                                        selectedTeams
+                                                            .removeWhere(
                                                               (e) =>
-
                                                                   e["teamId"] ==
                                                                   team["id"],
                                                             );
+                                                      } else {
+                                                        selectedTeams.add({
+                                                          "teamId": team["id"],
 
-                                                          } else {
-
-                                                            selectedTeams.add({
-
-                                                              "teamId":
-                                                                  team["id"],
-
-                                                              "teamName":
-                                                                  team["name"],
-                                                            });
-                                                          }
+                                                          "teamName":
+                                                              team["name"],
                                                         });
-                                                      },
-                                                    ),
-                                                  ],
+                                                      }
+                                                    });
+                                                  },
                                                 ),
-                                              );
-                                            },
-                                          ),
-                                        ],
-                                      ),
+                                              ],
+                                            ),
+                                          );
+                                        }),
+                                      ],
                                     ),
-                                ],
-                              ),
-                            );
-                          },
-                        ),
+                                  ),
+                              ],
+                            ),
+                          );
+                        }),
                       ],
                     ),
                   ),
-                  
+
                   SizedBox(
+                    width: double.infinity,
 
-                    width:
-                        double.infinity,
+                    height: 56,
 
-                    height:
-                        56,
-
-                    child:
-                        ElevatedButton(
-
-                      style:
-                          ElevatedButton.styleFrom(
-
-                        backgroundColor:
-                            const Color(
-                                0xFF5B3FFF),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF5B3FFF),
                       ),
 
-                      onPressed:
-                          () async {
+                      onPressed: () async {
+                        if (selectedHackathonId == null) return;
 
-                        if (selectedHackathonId ==
-                            null) return;
-
-                        if (selectedTeams
-                            .isEmpty) return;
-
-                        //////////////////////////////////////////////////////
-                        /// UPDATE TEAMS
-                        //////////////////////////////////////////////////////
-
-                        for (var team
-                            in selectedTeams) {
-
-                          await FirebaseFirestore
-                              .instance
-                              .collection(
-                                  "teams")
-                              .doc(
-                                  team["teamId"])
-                              .update({
-
-                            "judgeAssigned":
-                                true,
-
-                            "judgeId":
-                                widget
-                                    .judge["id"],
-
-                            "judgeName":
-                                widget
-                                    .judge["name"],
-
-                            "hackathonId":
-                                selectedHackathonId,
-
-                            "hackathonName":
-                                selectedHackathonName,
-                          });
-                        }
+                        if (selectedTeams.isEmpty) return;
 
                         //////////////////////////////////////////////////////
                         /// UPDATE HACKATHON JUDGE ASSIGNMENTS
                         //////////////////////////////////////////////////////
 
-                        final hackathonRef =
-                            FirebaseFirestore
-                                .instance
-                                .collection(
-                                    "hackathons")
-                                .doc(
-                                  selectedHackathonId,
-                                );
+                        final hackathonRef = FirebaseFirestore.instance
+                            .collection("hackathons")
+                            .doc(selectedHackathonId);
 
-                        final hackathonDoc =
-                            await hackathonRef
-                                .get();
+                        final hackathonDoc = await hackathonRef.get();
 
-                        final hackathonData =
-                            hackathonDoc
-                                    .data() ??
-                                {};
+                        final hackathonData = hackathonDoc.data() ?? {};
 
-                        List<dynamic>
-                            judgeAssignments =
-                            List.from(
-
-                          hackathonData[
-                                  "judgeAssignments"] ??
-                              [],
-                        );
+                        Map<String, Map<String, dynamic>> judgeAssignments =
+                            _hackathonJudgeAssignmentMap(
+                              hackathonData["judgeAssignments"],
+                            );
 
                         judgeAssignments.removeWhere(
-
-                          (a) =>
-
-                              a["judgeId"] ==
-                              widget.judge[
-                                  "id"],
+                          (teamCode, assignment) =>
+                              assignment["judgeId"] == widget.judge["id"],
                         );
 
-                        for (var team
-                            in selectedTeams) {
+                        for (var team in selectedTeams) {
+                          final teamCode = team["teamId"].toString();
 
-                          judgeAssignments
-                              .add({
+                          judgeAssignments[teamCode] = {
+                            "judgeId": widget.judge["id"],
 
-                            "judgeId":
-                                widget
-                                    .judge["id"],
+                            "judgeName": widget.judge["name"],
 
-                            "judgeName":
-                                widget
-                                    .judge["name"],
+                            "teamId": teamCode,
 
-                            "teamId":
-                                team[
-                                    "teamId"],
+                            "teamName": team["teamName"],
 
-                            "teamName":
-                                team[
-                                    "teamName"],
+                            "hackathonId": selectedHackathonId,
 
-                            "hackathonId":
-                                selectedHackathonId,
+                            "hackathonName": selectedHackathonName,
 
-                            "hackathonName":
-                                selectedHackathonName,
-
-                            "assignedAt":
-                                Timestamp.now(),
-                          });
+                            "assignedAt": Timestamp.now(),
+                          };
                         }
 
-                        await hackathonRef
-                            .update({
-
-                          "judgeAssignments":
-                              judgeAssignments,
+                        await hackathonRef.update({
+                          "judgeAssignments": judgeAssignments,
                         });
 
                         //////////////////////////////////////////////////////
                         /// UPDATE USER
                         //////////////////////////////////////////////////////
 
-                        List assignments =
-                            List.from(
-
-                          widget.judge[
-                                  "assignments"] ??
-                              [],
+                        List assignments = List.from(
+                          widget.judge["assignments"] ?? [],
                         );
 
                         assignments.add({
+                          "hackathon": selectedHackathonName,
 
-                          "hackathon":
-                              selectedHackathonName,
+                          "hackathonId": selectedHackathonId,
 
-                          "hackathonId":
-                              selectedHackathonId,
-
-                          "teams":
-                              selectedTeams,
+                          "teams": selectedTeams,
                         });
 
-                        await FirebaseFirestore
-                            .instance
-                            .collection(
-                                "users")
-                            .doc(
-                              widget.judge[
-                                  "id"],
-                            )
-                            .update({
+                        await FirebaseFirestore.instance
+                            .collection("users")
+                            .doc(widget.judge["id"])
+                            .update({"assignments": assignments});
 
-                          "assignments":
-                              assignments,
-                        });
+                        widget.judge["assignments"] = assignments;
 
-                        widget.judge[
-                                "assignments"] =
-                            assignments;
-
-                        Navigator.pop(
-                            context);
+                        Navigator.pop(context);
 
                         await loadHackathons();
 
                         setState(() {});
                       },
 
-                      child:
-                          const Text(
-
+                      child: const Text(
                         "Assign Judge",
 
-                        style:
-                            TextStyle(
+                        style: TextStyle(
+                          color: Colors.white,
 
-                          color:
-                              Colors.white,
-
-                          fontWeight:
-                              FontWeight.bold,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
@@ -1539,234 +909,128 @@ class _AdminJudgesDetailScreenState
   }
 
   @override
-  Widget build(
-      BuildContext context) {
-
-    final judge =
-        widget.judge;
+  Widget build(BuildContext context) {
+    final judge = widget.judge;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F5F9),
 
-      backgroundColor:
-          const Color(
-              0xFFF4F5F9),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: const Color(0xFF5B3FFF),
 
-      floatingActionButton:
-          FloatingActionButton.extended(
+        onPressed: showAssignHackathonSheet,
 
-        backgroundColor:
-            const Color(
-                0xFF5B3FFF),
-
-        onPressed:
-            showAssignHackathonSheet,
-
-        icon: const Icon(
-          Icons.add,
-          color:
-              Colors.white,
-        ),
+        icon: const Icon(Icons.add, color: Colors.white),
 
         label: const Text(
-
           "Add Hackathon",
 
-          style: TextStyle(
-            color:
-                Colors.white,
-          ),
+          style: TextStyle(color: Colors.white),
         ),
       ),
 
-      body:
-          SingleChildScrollView(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom: 120),
 
-        padding:
-            const EdgeInsets.only(
-          bottom:
-              120,
-        ),
-
-        child:
-            Column(
-
+        child: Column(
           children: [
-
             Container(
+              width: double.infinity,
 
-              width:
-                  double.infinity,
-
-              decoration:
-                  const BoxDecoration(
-
-                gradient:
-                    LinearGradient(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
                   colors: [
+                    Color(0xFF4F39F6),
 
-                    Color(
-                        0xFF4F39F6),
+                    Color(0xFF9810FA),
 
-                    Color(
-                        0xFF9810FA),
-
-                    Color(
-                        0xFF432DD7),
+                    Color(0xFF432DD7),
                   ],
                 ),
 
-                borderRadius:
-                    BorderRadius.only(
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(34),
 
-                  bottomLeft:
-                      Radius.circular(
-                          34),
-
-                  bottomRight:
-                      Radius.circular(
-                          34),
+                  bottomRight: Radius.circular(34),
                 ),
               ),
 
-              child:
-                  SafeArea(
+              child: SafeArea(
+                bottom: false,
 
-                bottom:
-                    false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
 
-                child:
-                    Padding(
-
-                  padding:
-                      const EdgeInsets.fromLTRB(
-                    20,
-                    18,
-                    20,
-                    30,
-                  ),
-
-                  child:
-                      Column(
-
+                  child: Column(
                     children: [
-
                       Row(
-
                         children: [
-
                           IconButton(
-
-                            onPressed:
-                                () {
-
-                              Navigator.pop(
-                                  context);
+                            onPressed: () {
+                              Navigator.pop(context);
                             },
 
-                            icon:
-                                const Icon(
-
+                            icon: const Icon(
                               Icons.arrow_back,
 
-                              color:
-                                  Colors.white,
+                              color: Colors.white,
                             ),
                           ),
                         ],
                       ),
 
-                      const SizedBox(
-                          height:
-                              12),
+                      const SizedBox(height: 12),
 
                       Container(
+                        width: 100,
 
-                        width:
-                            100,
+                        height: 100,
 
-                        height:
-                            100,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
 
-                        decoration:
-                            BoxDecoration(
-
-                          color:
-                              Colors.white,
-
-                          borderRadius:
-                              BorderRadius.circular(
-                                  30),
+                          borderRadius: BorderRadius.circular(30),
                         ),
 
-                        alignment:
-                            Alignment.center,
+                        alignment: Alignment.center,
 
-                        child:
-                            Text(
-
+                        child: Text(
                           judge["name"]
                               .split(" ")
                               .take(2)
-                              .map(
-                                (
-                                  e,
-                                ) =>
-                                    e[0],
-                              )
+                              .map((e) => e[0])
                               .join(),
 
-                          style:
-                              const TextStyle(
+                          style: const TextStyle(
+                            color: Color(0xFF5B3FFF),
 
-                            color:
-                                Color(
-                                    0xFF5B3FFF),
+                            fontSize: 30,
 
-                            fontSize:
-                                30,
-
-                            fontWeight:
-                                FontWeight.bold,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
 
-                      const SizedBox(
-                          height:
-                              18),
+                      const SizedBox(height: 18),
 
                       Text(
-
                         judge["name"],
 
-                        style:
-                            const TextStyle(
+                        style: const TextStyle(
+                          color: Colors.white,
 
-                          color:
-                              Colors.white,
+                          fontSize: 28,
 
-                          fontSize:
-                              28,
-
-                          fontWeight:
-                              FontWeight.bold,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
 
-                      const SizedBox(
-                          height:
-                              8),
+                      const SizedBox(height: 8),
 
                       Text(
-
                         judge["email"],
 
-                        style:
-                            const TextStyle(
-
-                          color:
-                              Colors.white70,
-                        ),
+                        style: const TextStyle(color: Colors.white70),
                       ),
                     ],
                   ),
@@ -1775,250 +1039,134 @@ class _AdminJudgesDetailScreenState
             ),
 
             Padding(
+              padding: const EdgeInsets.all(20),
 
-              padding:
-                  const EdgeInsets.all(
-                      20),
-
-              child:
-                  Column(
-
-                crossAxisAlignment:
-                    CrossAxisAlignment
-                        .start,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
 
                 children: [
-
                   const Text(
-
                     "Assigned Hackathons",
 
-                    style:
-                        TextStyle(
-
-                      fontSize:
-                          22,
-
-                      fontWeight:
-                          FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
 
-                  const SizedBox(
-                      height:
-                          18),
+                  const SizedBox(height: 18),
 
-                  ...(judge[
-                              "assignments"] ??
-                          [])
-                      .asMap()
-                      .entries
-                      .map(
+                  ...(judge["assignments"] ?? []).asMap().entries.map((entry) {
+                    final int assignmentIndex = entry.key;
 
-                    (
-                      entry,
-                    ) {
+                    final assignment = entry.value;
 
-                      final int
-                          assignmentIndex =
-                          entry.key;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 18),
 
-                      final assignment =
-                          entry.value;
+                      padding: const EdgeInsets.all(18),
 
-                      return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
 
-                        margin:
-                            const EdgeInsets.only(
-                          bottom:
-                              18,
-                        ),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
 
-                        padding:
-                            const EdgeInsets.all(
-                                18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
 
-                        decoration:
-                            BoxDecoration(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
 
-                          color:
-                              Colors.white,
+                                  children: [
+                                    Text(
+                                      assignment["hackathon"],
 
-                          borderRadius:
-                              BorderRadius.circular(
-                                  24),
-                        ),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
 
-                        child:
-                            Column(
-
-                          crossAxisAlignment:
-                              CrossAxisAlignment
-                                  .start,
-
-                          children: [
-
-                            Row(
-
-                              children: [
-
-                                Expanded(
-
-                                  child:
-                                      Column(
-
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-
-                                    children: [
-
-                                      Text(
-
-                                        assignment[
-                                            "hackathon"],
-
-                                        style:
-                                            const TextStyle(
-
-                                          fontWeight:
-                                              FontWeight.bold,
-
-                                          fontSize:
-                                              18,
-                                        ),
+                                        fontSize: 18,
                                       ),
+                                    ),
 
-                                      const SizedBox(
-                                          height:
-                                              6),
+                                    const SizedBox(height: 6),
 
-                                      Text(
-
-                                        "${assignment["teams"].length} Teams Assigned",
-                                      ),
-                                    ],
-                                  ),
+                                    Text(
+                                      "${assignment["teams"].length} Teams Assigned",
+                                    ),
+                                  ],
                                 ),
+                              ),
 
-                                IconButton(
+                              IconButton(
+                                onPressed: () {
+                                  editAssignment(assignmentIndex);
+                                },
 
-                                  onPressed:
-                                      () {
+                                icon: const Icon(
+                                  Icons.edit,
 
-                                    editAssignment(
-                                      assignmentIndex,
-                                    );
-                                  },
-
-                                  icon:
-                                      const Icon(
-
-                                    Icons.edit,
-
-                                    color:
-                                        Color(
-                                            0xFF5B3FFF),
-                                  ),
+                                  color: Color(0xFF5B3FFF),
                                 ),
+                              ),
 
-                                IconButton(
+                              IconButton(
+                                onPressed: () {
+                                  removeAssignment(assignmentIndex);
+                                },
 
-                                  onPressed:
-                                      () {
+                                icon: const Icon(
+                                  Icons.delete_outline,
 
-                                    removeAssignment(
-                                      assignmentIndex,
-                                    );
-                                  },
-
-                                  icon:
-                                      const Icon(
-
-                                    Icons.delete_outline,
-
-                                    color:
-                                        Colors.red,
-                                  ),
+                                  color: Colors.red,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
+                          ),
 
-                            const SizedBox(
-                                height:
-                                    16),
+                          const SizedBox(height: 16),
 
-                            Wrap(
+                          Wrap(
+                            spacing: 10,
 
-                              spacing:
-                                  10,
+                            runSpacing: 10,
 
-                              runSpacing:
-                                  10,
-
-                              children:
-                                  (assignment[
-                                              "teams"]
-                                          as List)
-                                      .map<
-                                          Widget>(
-                                (
+                            children:
+                                (assignment["teams"] as List).map<Widget>((
                                   team,
                                 ) {
-
-                                  final String
-                                      teamName =
-                                      team[
-                                          "teamName"];
+                                  final String teamName = team["teamName"];
 
                                   return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
 
-                                    padding:
-                                        const EdgeInsets.symmetric(
-
-                                      horizontal:
-                                          12,
-
-                                      vertical:
-                                          8,
+                                      vertical: 8,
                                     ),
 
-                                    decoration:
-                                        BoxDecoration(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF3F0FF),
 
-                                      color:
-                                          const Color(
-                                              0xFFF3F0FF),
-
-                                      borderRadius:
-                                          BorderRadius.circular(
-                                              20),
+                                      borderRadius: BorderRadius.circular(20),
                                     ),
 
-                                    child:
-                                        Text(
-
+                                    child: Text(
                                       teamName,
 
-                                      style:
-                                          const TextStyle(
+                                      style: const TextStyle(
+                                        color: Color(0xFF6D28D9),
 
-                                        color:
-                                            Color(
-                                                0xFF6D28D9),
-
-                                        fontWeight:
-                                            FontWeight.w600,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   );
-                                },
-                              ).toList(),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+                                }).toList(),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),

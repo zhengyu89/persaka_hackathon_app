@@ -4,6 +4,24 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'admin_add_judges_screen.dart';
 import 'admin_judge_detail_screen.dart';
 
+List<Map<String, dynamic>> _hackathonJudgeAssignments(Object? rawAssignments) {
+  if (rawAssignments is Map) {
+    return rawAssignments.values
+        .whereType<Map>()
+        .map((assignment) => Map<String, dynamic>.from(assignment))
+        .toList();
+  }
+
+  if (rawAssignments is List) {
+    return rawAssignments
+        .whereType<Map>()
+        .map((assignment) => Map<String, dynamic>.from(assignment))
+        .toList();
+  }
+
+  return const <Map<String, dynamic>>[];
+}
+
 class AdminManageJudgesScreen extends StatefulWidget {
   const AdminManageJudgesScreen({super.key});
 
@@ -12,23 +30,18 @@ class AdminManageJudgesScreen extends StatefulWidget {
       _AdminManageJudgesScreenState();
 }
 
-class _AdminManageJudgesScreenState
-    extends State<AdminManageJudgesScreen> {
-
+class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
   ////////////////////////////////////////////////////////////
   /// SEARCH
   ////////////////////////////////////////////////////////////
 
-  final TextEditingController
-      searchController =
-      TextEditingController();
+  final TextEditingController searchController = TextEditingController();
 
   ////////////////////////////////////////////////////////////
   /// FIREBASE JUDGES
   ////////////////////////////////////////////////////////////
 
-  List<Map<String, dynamic>>
-      judges = [];
+  List<Map<String, dynamic>> judges = [];
 
   bool isLoading = true;
 
@@ -37,21 +50,15 @@ class _AdminManageJudgesScreenState
   ////////////////////////////////////////////////////////////
 
   Future<void> loadJudges() async {
-
     try {
-
       //////////////////////////////////////////////////////////
       /// LOAD JUDGES
       //////////////////////////////////////////////////////////
 
       final snapshot =
-          await FirebaseFirestore
-              .instance
+          await FirebaseFirestore.instance
               .collection("users")
-              .where(
-                "role",
-                isEqualTo: "judge",
-              )
+              .where("role", isEqualTo: "judge")
               .get();
 
       //////////////////////////////////////////////////////////
@@ -59,45 +66,37 @@ class _AdminManageJudgesScreenState
       //////////////////////////////////////////////////////////
 
       final hackathonSnapshot =
-          await FirebaseFirestore
-              .instance
-              .collection("hackathons")
-              .get();
+          await FirebaseFirestore.instance.collection("hackathons").get();
 
       //////////////////////////////////////////////////////////
       /// MAP FOR TEAM COUNT
       //////////////////////////////////////////////////////////
 
-      Map<String, int>
-          judgeTeamCounts = {};
+      Map<String, int> judgeTeamCounts = {};
 
       //////////////////////////////////////////////////////////
       /// LOOP HACKATHONS
       //////////////////////////////////////////////////////////
 
-      for (var hackathon
-          in hackathonSnapshot.docs) {
+      for (var hackathon in hackathonSnapshot.docs) {
+        final data = hackathon.data();
 
-        final data =
-            hackathon.data();
-
-        List assignments =
-            data["judgeAssignments"] ?? [];
+        final assignments = _hackathonJudgeAssignments(
+          data["judgeAssignments"],
+        );
 
         ////////////////////////////////////////////////////////
         /// COUNT ASSIGNED TEAMS
         ////////////////////////////////////////////////////////
 
-        for (var assignment
-            in assignments) {
+        for (var assignment in assignments) {
+          final String judgeId = (assignment["judgeId"] ?? "").toString();
 
-          final String judgeId =
-              assignment["judgeId"];
+          if (judgeId.isEmpty) {
+            continue;
+          }
 
-          judgeTeamCounts[judgeId] =
-              (judgeTeamCounts[judgeId] ??
-                      0) +
-                  1;
+          judgeTeamCounts[judgeId] = (judgeTeamCounts[judgeId] ?? 0) + 1;
         }
       }
 
@@ -107,75 +106,49 @@ class _AdminManageJudgesScreenState
 
       judges =
           snapshot.docs.map((doc) {
+            final data = doc.data();
 
-        final data =
-            doc.data();
+            ////////////////////////////////////////////////////////
+            /// TEAM COUNT
+            ////////////////////////////////////////////////////////
 
-        ////////////////////////////////////////////////////////
-        /// TEAM COUNT
-        ////////////////////////////////////////////////////////
+            final int assignedCount = judgeTeamCounts[doc.id] ?? 0;
 
-        final int assignedCount =
-            judgeTeamCounts[doc.id] ??
-                0;
+            ////////////////////////////////////////////////////////
+            /// ASSIGNMENTS
+            ////////////////////////////////////////////////////////
 
-        ////////////////////////////////////////////////////////
-        /// ASSIGNMENTS
-        ////////////////////////////////////////////////////////
+            List assignments = data["assignments"] ?? [];
 
-        List assignments =
-            data["assignments"] ??
-                [];
+            ////////////////////////////////////////////////////////
+            /// STATUS
+            ////////////////////////////////////////////////////////
 
-        ////////////////////////////////////////////////////////
-        /// STATUS
-        ////////////////////////////////////////////////////////
+            final String status = assignedCount > 0 ? "Active" : "Available";
 
-        final String status =
-            assignedCount > 0
-                ? "Active"
-                : "Available";
+            return {
+              "id": doc.id,
 
-        return {
+              "name": data["name"] ?? "",
 
-          "id":
-              doc.id,
+              "email": data["email"] ?? "",
 
-          "name":
-              data["name"] ?? "",
+              "specialization": data["specialty"] ?? "General",
 
-          "email":
-              data["email"] ?? "",
+              //////////////////////////////////////////////////////
+              /// DYNAMIC TEAM COUNT
+              //////////////////////////////////////////////////////
+              "teamsAssigned": assignedCount,
 
-          "specialization":
-              data["specialty"] ??
-                  "General",
+              "status": status,
 
-          //////////////////////////////////////////////////////
-          /// DYNAMIC TEAM COUNT
-          //////////////////////////////////////////////////////
+              "assignments": assignments,
 
-          "teamsAssigned":
-              assignedCount,
-
-          "status":
-              status,
-
-          "assignments":
-              assignments,
-
-          "color":
-              const Color(
-                  0xFF7C3AED),
-        };
-
-      }).toList();
-
+              "color": const Color(0xFF7C3AED),
+            };
+          }).toList();
     } catch (e) {
-
-      debugPrint(
-        "LOAD JUDGES ERROR: $e",
-      );
+      debugPrint("LOAD JUDGES ERROR: $e");
     }
 
     isLoading = false;
@@ -199,42 +172,21 @@ class _AdminManageJudgesScreenState
   ////////////////////////////////////////////////////////////
 
   @override
-  Widget build(
-      BuildContext context) {
-
+  Widget build(BuildContext context) {
     final filteredJudges =
-        judges.where(
-      (
-        judge,
-      ) {
+        judges.where((judge) {
+          final query = searchController.text.toLowerCase();
 
-        final query =
-            searchController
-                .text
-                .toLowerCase();
-
-        return judge["name"]
-            .toString()
-            .toLowerCase()
-            .contains(query);
-      },
-    ).toList();
+          return judge["name"].toString().toLowerCase().contains(query);
+        }).toList();
 
     ////////////////////////////////////////////////////////////
     /// TOTAL ASSIGNED
     ////////////////////////////////////////////////////////////
 
-    final int totalAssigned =
-        judges.fold(
+    final int totalAssigned = judges.fold(
       0,
-      (
-        total,
-        judge,
-      ) =>
-          total +
-          ((judge["teamsAssigned"]
-                  as int?) ??
-              0),
+      (total, judge) => total + ((judge["teamsAssigned"] as int?) ?? 0),
     );
 
     ////////////////////////////////////////////////////////////
@@ -242,171 +194,104 @@ class _AdminManageJudgesScreenState
     ////////////////////////////////////////////////////////////
 
     final int activeJudges =
-        judges.where(
-      (judge) =>
-          judge["teamsAssigned"] >
-          0,
-    ).length;
+        judges.where((judge) => judge["teamsAssigned"] > 0).length;
 
     return Scaffold(
-
-      backgroundColor:
-          const Color(
-              0xFFF9FAFB),
+      backgroundColor: const Color(0xFFF9FAFB),
 
       body: SafeArea(
-
         child: Column(
-
           children: [
-
             //////////////////////////////////////////////////////
             /// HEADER
             //////////////////////////////////////////////////////
-
             Container(
+              width: double.infinity,
 
-              width:
-                  double.infinity,
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
 
-              padding:
-                  const EdgeInsets
-                      .fromLTRB(
-                24,
-                24,
-                24,
-                28,
-              ),
-
-              decoration:
-                  const BoxDecoration(
-
-                gradient:
-                    LinearGradient(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
                   colors: [
+                    Color(0xFFFE9A00),
 
-                    Color(
-                        0xFFFE9A00),
+                    Color(0xFFFF6900),
 
-                    Color(
-                        0xFFFF6900),
-
-                    Color(
-                        0xFFE17100),
+                    Color(0xFFE17100),
                   ],
                 ),
 
-                borderRadius:
-                    BorderRadius.only(
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(32),
 
-                  bottomLeft:
-                      Radius.circular(
-                          32),
-
-                  bottomRight:
-                      Radius.circular(
-                          32),
+                  bottomRight: Radius.circular(32),
                 ),
               ),
 
               child: Column(
-
-                crossAxisAlignment:
-                    CrossAxisAlignment
-                        .start,
+                crossAxisAlignment: CrossAxisAlignment.start,
 
                 children: [
-
                   //////////////////////////////////////////////////
                   /// TITLE
                   //////////////////////////////////////////////////
-
                   const Text(
-
                     "Judges Management",
 
                     style: TextStyle(
+                      color: Colors.white,
 
-                      color:
-                          Colors.white,
+                      fontSize: 28,
 
-                      fontSize:
-                          28,
-
-                      fontWeight:
-                          FontWeight.bold,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
 
-                  const SizedBox(
-                      height: 6),
+                  const SizedBox(height: 6),
 
                   //////////////////////////////////////////////////
                   /// SUBTITLE
                   //////////////////////////////////////////////////
-
                   Text(
-
                     "${judges.length} examiners registered",
 
-                    style:
-                        const TextStyle(
+                    style: const TextStyle(
+                      color: Color(0xFFFFF3C6),
 
-                      color:
-                          Color(
-                              0xFFFFF3C6),
-
-                      fontSize:
-                          14,
+                      fontSize: 14,
                     ),
                   ),
 
-                  const SizedBox(
-                      height: 24),
+                  const SizedBox(height: 24),
 
                   //////////////////////////////////////////////////
                   /// STATS
                   //////////////////////////////////////////////////
-
                   Row(
-
                     children: [
-
                       Expanded(
-                        child:
-                            _buildStatCard(
-
+                        child: _buildStatCard(
                           "${judges.length}",
 
                           "Total Judges",
                         ),
                       ),
 
-                      const SizedBox(
-                          width:
-                              12),
+                      const SizedBox(width: 12),
 
                       Expanded(
-                        child:
-                            _buildStatCard(
-
-                          totalAssigned
-                              .toString(),
+                        child: _buildStatCard(
+                          totalAssigned.toString(),
 
                           "Assigned",
                         ),
                       ),
 
-                      const SizedBox(
-                          width:
-                              12),
+                      const SizedBox(width: 12),
 
                       Expanded(
-                        child:
-                            _buildStatCard(
-
-                          activeJudges
-                              .toString(),
+                        child: _buildStatCard(
+                          activeJudges.toString(),
 
                           "Active",
                         ),
@@ -420,297 +305,163 @@ class _AdminManageJudgesScreenState
             //////////////////////////////////////////////////////
             /// SEARCH + ACTIONS
             //////////////////////////////////////////////////////
-
             Padding(
-
-              padding:
-                  const EdgeInsets
-                      .fromLTRB(
-                16,
-                18,
-                16,
-                8,
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
 
               child: Row(
-
                 children: [
-
                   //////////////////////////////////////////////////
                   /// SEARCH BAR
                   //////////////////////////////////////////////////
-
                   Expanded(
+                    child: Container(
+                      height: 56,
 
-                    child:
-                        Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
 
-                      height:
-                          56,
-
-                      decoration:
-                          BoxDecoration(
-
-                        color:
-                            Colors.white,
-
-                        borderRadius:
-                            BorderRadius.circular(
-                                18),
+                        borderRadius: BorderRadius.circular(18),
 
                         boxShadow: [
-
                           BoxShadow(
+                            color: Colors.black.withOpacity(.04),
 
-                            color: Colors
-                                .black
-                                .withOpacity(
-                                    .04),
+                            blurRadius: 10,
 
-                            blurRadius:
-                                10,
-
-                            offset:
-                                const Offset(
-                                    0,
-                                    4),
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
 
-                      child:
-                          TextField(
+                      child: TextField(
+                        controller: searchController,
 
-                        controller:
-                            searchController,
+                        decoration: InputDecoration(
+                          hintText: "Search judges...",
 
-                        decoration:
-                            InputDecoration(
+                          hintStyle: TextStyle(color: Colors.grey.shade500),
 
-                          hintText:
-                              "Search judges...",
-
-                          hintStyle:
-                              TextStyle(
-
-                            color: Colors
-                                .grey
-                                .shade500,
-                          ),
-
-                          prefixIcon:
-                              Icon(
-
+                          prefixIcon: Icon(
                             Icons.search,
 
-                            color: Colors
-                                .grey
-                                .shade600,
+                            color: Colors.grey.shade600,
                           ),
 
-                          border:
-                              InputBorder
-                                  .none,
+                          border: InputBorder.none,
 
-                          contentPadding:
-                              const EdgeInsets.symmetric(
-                            vertical:
-                                16,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 16,
                           ),
                         ),
 
-                        onChanged:
-                            (_) {
-
+                        onChanged: (_) {
                           setState(() {});
                         },
                       ),
                     ),
                   ),
 
-                  const SizedBox(
-                      width:
-                          12),
+                  const SizedBox(width: 12),
 
                   //////////////////////////////////////////////////
                   /// REFRESH
                   //////////////////////////////////////////////////
-
                   GestureDetector(
-
-                    onTap:
-                        () async {
-
+                    onTap: () async {
                       setState(() {
-
-                        isLoading =
-                            true;
+                        isLoading = true;
                       });
 
                       await loadJudges();
 
-                      if (!mounted)
-                        return;
+                      if (!mounted) return;
 
-                      ScaffoldMessenger.of(
-                              context)
-                          .showSnackBar(
-
-                        const SnackBar(
-
-                          content:
-                              Text(
-                            "Judges list refreshed",
-                          ),
-                        ),
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Judges list refreshed")),
                       );
                     },
 
-                    child:
-                        Container(
+                    child: Container(
+                      height: 56,
 
-                      height:
-                          56,
+                      width: 56,
 
-                      width:
-                          56,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
 
-                      decoration:
-                          BoxDecoration(
-
-                        color:
-                            Colors.white,
-
-                        borderRadius:
-                            BorderRadius.circular(
-                                18),
+                        borderRadius: BorderRadius.circular(18),
 
                         boxShadow: [
-
                           BoxShadow(
+                            color: Colors.black.withOpacity(.04),
 
-                            color: Colors
-                                .black
-                                .withOpacity(
-                                    .04),
+                            blurRadius: 10,
 
-                            blurRadius:
-                                10,
-
-                            offset:
-                                const Offset(
-                                    0,
-                                    4),
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
 
                       child:
                           isLoading
-
                               ? const Padding(
+                                padding: EdgeInsets.all(14),
 
-                                  padding:
-                                      EdgeInsets.all(
-                                          14),
-
-                                  child:
-                                      CircularProgressIndicator(
-                                    strokeWidth:
-                                        2,
-                                  ),
-                                )
-
-                              : const Icon(
-
-                                  Icons
-                                      .refresh_rounded,
-
-                                  color:
-                                      Color(
-                                          0xFF5B3FFF),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
                                 ),
+                              )
+                              : const Icon(
+                                Icons.refresh_rounded,
+
+                                color: Color(0xFF5B3FFF),
+                              ),
                     ),
                   ),
 
-                  const SizedBox(
-                      width:
-                          12),
+                  const SizedBox(width: 12),
 
                   //////////////////////////////////////////////////
                   /// ADD BUTTON
                   //////////////////////////////////////////////////
-
                   GestureDetector(
-
-                    onTap:
-                        () async {
-
-                      final result =
-                          await Navigator.push(
-
+                    onTap: () async {
+                      final result = await Navigator.push(
                         context,
 
                         MaterialPageRoute(
-
-                          builder:
-                              (_) =>
-                                  const AdminAddJudgesScreen(),
+                          builder: (_) => const AdminAddJudgesScreen(),
                         ),
                       );
 
-                      if (result ==
-                          true) {
-
+                      if (result == true) {
                         setState(() {
-
-                          isLoading =
-                              true;
+                          isLoading = true;
                         });
 
                         await loadJudges();
                       }
                     },
 
-                    child:
-                        Container(
+                    child: Container(
+                      height: 56,
 
-                      height:
-                          56,
+                      width: 56,
 
-                      width:
-                          56,
-
-                      decoration:
-                          BoxDecoration(
-
-                        gradient:
-                            const LinearGradient(
-                          colors: [
-
-                            Color(
-                                0xFF5B3FFF),
-
-                            Color(
-                                0xFF7C3AED),
-                          ],
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF5B3FFF), Color(0xFF7C3AED)],
                         ),
 
-                        borderRadius:
-                            BorderRadius.circular(
-                                18),
+                        borderRadius: BorderRadius.circular(18),
                       ),
 
-                      child:
-                          const Icon(
-
+                      child: const Icon(
                         Icons.add,
 
-                        color:
-                            Colors.white,
+                        color: Colors.white,
 
-                        size:
-                            26,
+                        size: 26,
                       ),
                     ),
                   ),
@@ -721,412 +472,239 @@ class _AdminManageJudgesScreenState
             //////////////////////////////////////////////////////
             /// JUDGES LIST
             //////////////////////////////////////////////////////
-
             Expanded(
-
               child:
                   isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : filteredJudges.isEmpty
+                      ? const Center(child: Text("No judges found"))
+                      : ListView.builder(
+                        padding: const EdgeInsets.all(16),
 
-                      ? const Center(
-                          child:
-                              CircularProgressIndicator(),
-                        )
+                        itemCount: filteredJudges.length,
 
-                      : filteredJudges
-                              .isEmpty
+                        itemBuilder: (context, index) {
+                          final judge = filteredJudges[index];
 
-                          ? const Center(
-                              child:
-                                  Text(
-                                "No judges found",
-                              ),
-                            )
-
-                          : ListView.builder(
-
-                              padding:
-                                  const EdgeInsets.all(
-                                      16),
-
-                              itemCount:
-                                  filteredJudges
-                                      .length,
-
-                              itemBuilder:
-                                  (
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
                                 context,
-                                index,
-                              ) {
 
-                                final judge =
-                                    filteredJudges[
-                                        index];
+                                MaterialPageRoute(
+                                  builder:
+                                      (_) =>
+                                          AdminJudgesDetailScreen(judge: judge),
+                                ),
+                              ).then((_) async {
+                                //////////////////////////////////////////////////
+                                /// RELOAD AFTER BACK
+                                //////////////////////////////////////////////////
 
-                                return GestureDetector(
+                                setState(() {
+                                  isLoading = true;
+                                });
 
-                                  onTap:
-                                      () {
+                                await loadJudges();
+                              });
+                            },
 
-                                    Navigator.push(
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 18),
 
-                                      context,
+                              padding: const EdgeInsets.all(18),
 
-                                      MaterialPageRoute(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
 
-                                        builder:
-                                            (_) =>
-                                                AdminJudgesDetailScreen(
+                                borderRadius: BorderRadius.circular(24),
 
-                                          judge:
-                                              judge,
-                                        ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(.05),
+
+                                    blurRadius: 10,
+
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+
+                              child: Row(
+                                children: [
+                                  //////////////////////////////////////////////////
+                                  /// AVATAR
+                                  //////////////////////////////////////////////////
+                                  Container(
+                                    width: 58,
+
+                                    height: 58,
+
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFF5B3FFF),
+
+                                          Color(0xFF7C3AED),
+                                        ],
                                       ),
-                                    ).then(
-                                      (_) async {
 
-                                        //////////////////////////////////////////////////
-                                        /// RELOAD AFTER BACK
-                                        //////////////////////////////////////////////////
-
-                                        setState(() {
-
-                                          isLoading =
-                                              true;
-                                        });
-
-                                        await loadJudges();
-                                      },
-                                    );
-                                  },
-
-                                  child:
-                                      Container(
-
-                                    margin:
-                                        const EdgeInsets.only(
-                                      bottom:
-                                          18,
+                                      borderRadius: BorderRadius.circular(18),
                                     ),
 
-                                    padding:
-                                        const EdgeInsets.all(
-                                            18),
+                                    alignment: Alignment.center,
 
-                                    decoration:
-                                        BoxDecoration(
+                                    child: Text(
+                                      judge["name"]
+                                          .split(" ")
+                                          .take(2)
+                                          .map((e) => e[0])
+                                          .join(),
 
-                                      color:
-                                          Colors.white,
+                                      style: const TextStyle(
+                                        color: Colors.white,
 
-                                      borderRadius:
-                                          BorderRadius.circular(
-                                              24),
+                                        fontWeight: FontWeight.bold,
 
-                                      boxShadow: [
-
-                                        BoxShadow(
-
-                                          color: Colors
-                                              .black
-                                              .withOpacity(
-                                                  .05),
-
-                                          blurRadius:
-                                              10,
-
-                                          offset:
-                                              const Offset(
-                                                  0,
-                                                  4),
-                                        ),
-                                      ],
+                                        fontSize: 18,
+                                      ),
                                     ),
+                                  ),
 
-                                    child:
-                                        Row(
+                                  const SizedBox(width: 16),
+
+                                  //////////////////////////////////////////////////
+                                  /// INFO
+                                  //////////////////////////////////////////////////
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
 
                                       children: [
+                                        Text(
+                                          judge["name"],
 
-                                        //////////////////////////////////////////////////
-                                        /// AVATAR
-                                        //////////////////////////////////////////////////
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+
+                                            fontSize: 16,
+                                          ),
+                                        ),
+
+                                        const SizedBox(height: 6),
+
+                                        Text(
+                                          judge["email"],
+
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+
+                                            fontSize: 13,
+                                          ),
+                                        ),
+
+                                        const SizedBox(height: 8),
 
                                         Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
 
-                                          width:
-                                              58,
-
-                                          height:
-                                              58,
-
-                                          decoration:
-                                              BoxDecoration(
-
-                                            gradient:
-                                                const LinearGradient(
-                                              colors: [
-
-                                                Color(
-                                                    0xFF5B3FFF),
-
-                                                Color(
-                                                    0xFF7C3AED),
-                                              ],
-                                            ),
-
-                                            borderRadius:
-                                                BorderRadius.circular(
-                                                    18),
+                                            vertical: 6,
                                           ),
 
-                                          alignment:
-                                              Alignment.center,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF3F0FF),
 
-                                          child:
-                                              Text(
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
+                                          ),
 
-                                            judge["name"]
-                                                .split(
-                                                    " ")
-                                                .take(
-                                                    2)
-                                                .map(
-                                                    (
-                                                      e,
-                                                    ) =>
-                                                        e[0])
-                                                .join(),
+                                          child: Text(
+                                            judge["specialization"],
 
-                                            style:
-                                                const TextStyle(
+                                            style: const TextStyle(
+                                              color: Color(0xFF7C3AED),
 
-                                              color:
-                                                  Colors.white,
+                                              fontWeight: FontWeight.w600,
 
-                                              fontWeight:
-                                                  FontWeight.bold,
-
-                                              fontSize:
-                                                  18,
+                                              fontSize: 11,
                                             ),
                                           ),
                                         ),
 
-                                        const SizedBox(
-                                            width:
-                                                16),
+                                        const SizedBox(height: 12),
 
                                         //////////////////////////////////////////////////
-                                        /// INFO
+                                        /// TEAM ASSIGNED
                                         //////////////////////////////////////////////////
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.groups_rounded,
 
-                                        Expanded(
+                                              size: 15,
 
-                                          child:
-                                              Column(
+                                              color: Colors.grey.shade600,
+                                            ),
 
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment
-                                                    .start,
+                                            const SizedBox(width: 5),
 
-                                            children: [
+                                            Text(
+                                              "${judge["teamsAssigned"]} teams assigned",
 
-                                              Text(
+                                              style: TextStyle(
+                                                color: Colors.grey.shade700,
 
-                                                judge[
-                                                    "name"],
-
-                                                style:
-                                                    const TextStyle(
-
-                                                  fontWeight:
-                                                      FontWeight.bold,
-
-                                                  fontSize:
-                                                      16,
-                                                ),
+                                                fontSize: 12,
                                               ),
+                                            ),
 
-                                              const SizedBox(
-                                                  height:
-                                                      6),
+                                            const SizedBox(width: 12),
 
-                                              Text(
+                                            //////////////////////////////////////////////////
+                                            /// STATUS
+                                            //////////////////////////////////////////////////
+                                            Container(
+                                              width: 8,
 
-                                                judge[
-                                                    "email"],
+                                              height: 8,
 
-                                                style:
-                                                    TextStyle(
+                                              decoration: BoxDecoration(
+                                                color:
+                                                    judge["teamsAssigned"] > 0
+                                                        ? const Color(
+                                                          0xFF00C950,
+                                                        )
+                                                        : Colors.orange,
 
-                                                  color: Colors
-                                                      .grey
-                                                      .shade600,
-
-                                                  fontSize:
-                                                      13,
-                                                ),
+                                                shape: BoxShape.circle,
                                               ),
+                                            ),
 
-                                              const SizedBox(
-                                                  height:
-                                                      8),
+                                            const SizedBox(width: 6),
 
-                                              Container(
+                                            Text(
+                                              judge["status"],
 
-                                                padding:
-                                                    const EdgeInsets.symmetric(
+                                              style: TextStyle(
+                                                color: Colors.grey.shade700,
 
-                                                  horizontal:
-                                                      10,
-
-                                                  vertical:
-                                                      6,
-                                                ),
-
-                                                decoration:
-                                                    BoxDecoration(
-
-                                                  color:
-                                                      const Color(
-                                                          0xFFF3F0FF),
-
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          20),
-                                                ),
-
-                                                child:
-                                                    Text(
-
-                                                  judge[
-                                                      "specialization"],
-
-                                                  style:
-                                                      const TextStyle(
-
-                                                    color:
-                                                        Color(
-                                                            0xFF7C3AED),
-
-                                                    fontWeight:
-                                                        FontWeight.w600,
-
-                                                    fontSize:
-                                                        11,
-                                                  ),
-                                                ),
+                                                fontSize: 12,
                                               ),
-
-                                              const SizedBox(
-                                                  height:
-                                                      12),
-
-                                              //////////////////////////////////////////////////
-                                              /// TEAM ASSIGNED
-                                              //////////////////////////////////////////////////
-
-                                              Row(
-
-                                                children: [
-
-                                                  Icon(
-
-                                                    Icons
-                                                        .groups_rounded,
-
-                                                    size:
-                                                        15,
-
-                                                    color: Colors
-                                                        .grey
-                                                        .shade600,
-                                                  ),
-
-                                                  const SizedBox(
-                                                      width:
-                                                          5),
-
-                                                  Text(
-
-                                                    "${judge["teamsAssigned"]} teams assigned",
-
-                                                    style:
-                                                        TextStyle(
-
-                                                      color: Colors
-                                                          .grey
-                                                          .shade700,
-
-                                                      fontSize:
-                                                          12,
-                                                    ),
-                                                  ),
-
-                                                  const SizedBox(
-                                                      width:
-                                                          12),
-
-                                                  //////////////////////////////////////////////////
-                                                  /// STATUS
-                                                  //////////////////////////////////////////////////
-
-                                                  Container(
-
-                                                    width:
-                                                        8,
-
-                                                    height:
-                                                        8,
-
-                                                    decoration:
-                                                        BoxDecoration(
-
-                                                      color:
-                                                          judge["teamsAssigned"] >
-                                                                  0
-
-                                                              ? const Color(
-                                                                  0xFF00C950)
-
-                                                              : Colors.orange,
-
-                                                      shape:
-                                                          BoxShape.circle,
-                                                    ),
-                                                  ),
-
-                                                  const SizedBox(
-                                                      width:
-                                                          6),
-
-                                                  Text(
-
-                                                    judge[
-                                                        "status"],
-
-                                                    style:
-                                                        TextStyle(
-
-                                                      color: Colors
-                                                          .grey
-                                                          .shade700,
-
-                                                      fontSize:
-                                                          12,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
                                   ),
-                                );
-                              },
+                                ],
+                              ),
                             ),
+                          );
+                        },
+                      ),
             ),
           ],
         ),
@@ -1138,72 +716,36 @@ class _AdminManageJudgesScreenState
   /// STAT CARD
   ////////////////////////////////////////////////////////////
 
-  Widget _buildStatCard(
-    String number,
-    String title,
-  ) {
-
+  Widget _buildStatCard(String number, String title) {
     return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
 
-      padding:
-          const EdgeInsets
-              .symmetric(
-        vertical:
-            16,
-      ),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(.18),
 
-      decoration:
-          BoxDecoration(
-
-        color: Colors.white
-            .withOpacity(
-                .18),
-
-        borderRadius:
-            BorderRadius.circular(
-                18),
+        borderRadius: BorderRadius.circular(18),
       ),
 
       child: Column(
-
         children: [
-
           Text(
-
             number,
 
-            style:
-                const TextStyle(
+            style: const TextStyle(
+              color: Colors.white,
 
-              color:
-                  Colors.white,
+              fontWeight: FontWeight.bold,
 
-              fontWeight:
-                  FontWeight.bold,
-
-              fontSize:
-                  24,
+              fontSize: 24,
             ),
           ),
 
-          const SizedBox(
-              height:
-                  6),
+          const SizedBox(height: 6),
 
           Text(
-
             title,
 
-            style:
-                const TextStyle(
-
-              color:
-                  Color(
-                      0xFFFFF3C6),
-
-              fontSize:
-                  12,
-            ),
+            style: const TextStyle(color: Color(0xFFFFF3C6), fontSize: 12),
           ),
         ],
       ),
