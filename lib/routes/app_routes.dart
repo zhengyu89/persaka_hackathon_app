@@ -9,6 +9,7 @@ import '../features/admin/screens/admin_hackathon_settings_screen.dart';
 import '../features/judge/screens/judge_dashboard.dart';
 import '../features/judge/screens/judge_rubric_screen.dart';
 import '../features/judge/screens/judge_score_screen.dart';
+import '../features/judge/screens/judge_team_selection_screen.dart';
 import '../features/participant/screens/participant_dashboard.dart';
 
 class AppRoutes {
@@ -59,6 +60,25 @@ class AppRoutes {
     }
 
     const rubricSuffix = '/rubric';
+    const teamsSuffix = '/teams';
+    if (name.startsWith(judgeHackathonPrefix) && name.endsWith(teamsSuffix)) {
+      final hackathonId = Uri.decodeComponent(
+        name
+            .substring(
+              judgeHackathonPrefix.length,
+              name.length - teamsSuffix.length,
+            )
+            .trim(),
+      );
+
+      if (hackathonId.isNotEmpty) {
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (_) => JudgeTeamSelectionScreen(hackathonId: hackathonId),
+        );
+      }
+    }
+
     if (name.startsWith(judgeHackathonPrefix) &&
         name.endsWith(rubricSuffix)) {
       final hackathonId = Uri.decodeComponent(
@@ -95,14 +115,17 @@ class AppRoutes {
       );
       final args = settings.arguments as Map<String, dynamic>?;
       final hackathonId = args?['hackathonId']?.toString();
+      final teamName = args?['teamName']?.toString();
 
       if (teamId.isNotEmpty) {
         return MaterialPageRoute(
           settings: settings,
-          builder: (_) => JudgeScoreScreen(
-            teamId: teamId,
-            hackathonId: hackathonId,
-          ),
+          builder:
+              (_) => JudgeScoreScreen(
+                teamId: teamId,
+                hackathonId: hackathonId,
+                teamName: teamName,
+              ),
         );
       }
     }

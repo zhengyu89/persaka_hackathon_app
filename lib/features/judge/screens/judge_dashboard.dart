@@ -210,12 +210,11 @@ class _JudgeHackathonCard extends StatelessWidget {
               onPressed: () {
                 Navigator.pushNamed(
                   context,
-                  '/app/judge/hackathon/${Uri.encodeComponent(assignment.hackathon.id)}/rubric',
-                  arguments: {'assignedTeams': assignment.assignedTeamIds},
+                  '/app/judge/hackathon/${Uri.encodeComponent(assignment.hackathon.id)}/teams',
                 );
               },
-              icon: const Icon(Icons.rule_rounded),
-              label: const Text('View Rubric'),
+              icon: const Icon(Icons.groups_rounded),
+              label: const Text('View Assigned Teams'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: ParticipantPalette.primary,
                 foregroundColor: Colors.white,
@@ -359,70 +358,66 @@ class _JudgeHackathonAssignment {
   final int criteriaCount;
 }
 
-class _AssignmentState {
-  _AssignmentState({required this.hackathon});
-
-  HackathonSummary hackathon;
-  List<String> assignedTeamIds = const <String>[];
-  int criteriaCount = 0;
-  bool hasJudgeAssignment = false;
-}
-
-Stream<List<_JudgeHackathonAssignment>>
-_assignedHackathonsStream(String judgeUid) {
-
+Stream<List<_JudgeHackathonAssignment>> _assignedHackathonsStream(
+  String judgeUid,
+) {
   return FirebaseFirestore.instance
-      .collection('hackathons')
+      .collectionGroup('judgeAssignments')
+      .where('judgeUid', isEqualTo: judgeUid)
       .snapshots()
-      .map((snapshot) {
+      .asyncMap((snapshot) async {
+        final teamIdsByHackathon = <String, Set<String>>{};
+        final hackathonRefs =
+            <String, DocumentReference<Map<String, dynamic>>>{};
 
-    List<_JudgeHackathonAssignment> assignments = [];
+        for (final doc in snapshot.docs) {
+          final hackathonRef = doc.reference.parent.parent;
+          if (hackathonRef == null) {
+            continue;
+          }
 
-    for (final doc in snapshot.docs) {
+          final teamId = (doc.data()['teamId'] ?? '').toString().trim();
+          if (teamId.isEmpty) {
+            continue;
+          }
 
-      final data = doc.data();
+          teamIdsByHackathon
+              .putIfAbsent(hackathonRef.id, () => <String>{})
+              .add(teamId);
+          hackathonRefs[hackathonRef.id] = hackathonRef;
+        }
 
-      final judgeAssignments =
-          List<Map<String, dynamic>>.from(
-            data['judgeAssignments'] ?? [],
+        final assignments = <_JudgeHackathonAssignment>[];
+        for (final entry in teamIdsByHackathon.entries) {
+          final hackathonRef = hackathonRefs[entry.key];
+          if (hackathonRef == null) {
+            continue;
+          }
+
+          final hackathonDoc = await hackathonRef.get();
+          if (!hackathonDoc.exists) {
+            continue;
+          }
+
+          final criteriaSnapshot =
+              await hackathonRef
+                  .collection('criteria')
+                  .where('active', isEqualTo: true)
+                  .get();
+
+          assignments.add(
+            _JudgeHackathonAssignment(
+              hackathon: HackathonSummary.fromDocument(hackathonDoc),
+              assignedTeamIds: entry.value.toList()..sort(),
+              criteriaCount: criteriaSnapshot.size,
+            ),
           );
+        }
 
-      final myAssignments =
-          judgeAssignments.where(
-            (assignment) =>
-                assignment['judgeId'] == judgeUid,
-          ).toList();
+        assignments.sort(
+          (a, b) => a.hackathon.title.compareTo(b.hackathon.title),
+        );
 
-      if (myAssignments.isEmpty) {
-        continue;
-      }
-
-      assignments.add(
-        _JudgeHackathonAssignment(
-          hackathon:
-              HackathonSummary.fromDocument(doc),
-
-          assignedTeamIds:
-              myAssignments
-                  .map(
-                    (assignment) =>
-                        assignment['teamId']
-                            as String,
-                  )
-                  .toList(),
-
-          criteriaCount: 1,
-        ),
-      );
-    }
-
-    assignments.sort(
-      (a, b) =>
-          a.hackathon.title.compareTo(
-            b.hackathon.title,
-          ),
-    );
-
-    return assignments;
-  });
+        return assignments;
+      });
 }
