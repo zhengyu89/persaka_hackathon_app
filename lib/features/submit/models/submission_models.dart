@@ -53,6 +53,7 @@ class HackathonSummary {
     this.endDate,
     this.judgingRules = const <String, dynamic>{},
     this.submissionRequirements = const <String, dynamic>{},
+    this.judgeAssignments = const <String, dynamic>{},
   });
 
   final String id;
@@ -69,6 +70,7 @@ class HackathonSummary {
   final Timestamp? endDate;
   final Map<String, dynamic> judgingRules;
   final Map<String, dynamic> submissionRequirements;
+  final Map<String, dynamic> judgeAssignments;
 
   factory HackathonSummary.fromMap(String id, Map<String, dynamic> data) {
     return HackathonSummary(
@@ -92,6 +94,7 @@ class HackathonSummary {
       submissionRequirements: Map<String, dynamic>.from(
         data['submissionRequirements'] ?? const <String, dynamic>{},
       ),
+      judgeAssignments: _normalizeJudgeAssignments(data['judgeAssignments']),
     );
   }
 
@@ -103,6 +106,30 @@ class HackathonSummary {
 
   bool get hasParticipantFormUrl => participantFormUrl.trim().isNotEmpty;
   bool get hasReviewUrl => reviewUrl.trim().isNotEmpty;
+}
+
+Map<String, dynamic> _normalizeJudgeAssignments(Object? rawAssignments) {
+  if (rawAssignments is Map) {
+    return rawAssignments.map((key, value) => MapEntry(key.toString(), value));
+  }
+
+  if (rawAssignments is List) {
+    final normalized = <String, dynamic>{};
+    for (final assignment in rawAssignments) {
+      if (assignment is! Map) {
+        continue;
+      }
+      final teamCode =
+          (assignment['teamCode'] ?? assignment['teamId'] ?? '').toString();
+      if (teamCode.isEmpty) {
+        continue;
+      }
+      normalized[teamCode] = Map<String, dynamic>.from(assignment);
+    }
+    return normalized;
+  }
+
+  return const <String, dynamic>{};
 }
 
 class SubmissionRecord {
