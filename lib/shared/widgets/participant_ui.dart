@@ -28,6 +28,7 @@ class ParticipantPageScaffold extends StatelessWidget {
     required this.icon,
     required this.children,
     this.trailing,
+    this.leading,
   });
 
   final String title;
@@ -35,6 +36,7 @@ class ParticipantPageScaffold extends StatelessWidget {
   final IconData icon;
   final List<Widget> children;
   final Widget? trailing;
+  final Widget? leading;
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +60,10 @@ class ParticipantPageScaffold extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (leading != null) ...[
+                          leading!,
+                          const SizedBox(height: 18),
+                        ],
                         Container(
                           width: 48,
                           height: 48,
@@ -103,6 +109,42 @@ class ParticipantPageScaffold extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class ParticipantHeaderIconButton extends StatelessWidget {
+  const ParticipantHeaderIconButton({
+    super.key,
+    required this.icon,
+    required this.onPressed,
+    this.tooltip,
+  });
+
+  final IconData icon;
+  final VoidCallback onPressed;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final button = Material(
+      color: Colors.white.withOpacity(0.16),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(16),
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: Icon(icon, color: Colors.white),
+        ),
+      ),
+    );
+
+    if (tooltip == null || tooltip!.isEmpty) {
+      return button;
+    }
+
+    return Tooltip(message: tooltip!, child: button);
   }
 }
 
@@ -252,10 +294,7 @@ class ParticipantMetricTile extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               label,
-              style: const TextStyle(
-                color: Color(0xFFEAE7FF),
-                fontSize: 12,
-              ),
+              style: const TextStyle(color: Color(0xFFEAE7FF), fontSize: 12),
             ),
           ],
         ),
@@ -300,10 +339,7 @@ class ParticipantTimelineTile extends StatelessWidget {
             width: 12,
             height: 12,
             margin: const EdgeInsets.only(top: 2),
-            decoration: BoxDecoration(
-              color: dotColor,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
           ),
           const SizedBox(width: 12),
           Expanded(

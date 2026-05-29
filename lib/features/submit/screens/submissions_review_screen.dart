@@ -172,8 +172,12 @@ class _SubmissionsReviewScreenState extends State<SubmissionsReviewScreen> {
                         )
                         .toList();
 
-                final isAnonymous = selectedHackathon.anonymousJudging && widget.title != 'Submitted Projects';
-                final registeredTeamsSorted = List<String>.from(selectedHackathon.registeredTeams)..sort();
+                final isAnonymous =
+                    selectedHackathon.anonymousJudging &&
+                    widget.title != 'Submitted Projects';
+                final registeredTeamsSorted = List<String>.from(
+                  selectedHackathon.registeredTeams,
+                )..sort();
 
                 return _buildScaffold(
                   trailingLabel:
@@ -208,20 +212,21 @@ class _SubmissionsReviewScreenState extends State<SubmissionsReviewScreen> {
                           color: ParticipantPalette.warning,
                         )
                       else
-                        ...reviewItems.map(
-                          (item) {
-                            final index = registeredTeamsSorted.indexOf(item.teamCode);
-                            final teamNum = index != -1 ? index + 1 : 1;
-                            final maskedName = 'Team #$teamNum';
+                        ...reviewItems.map((item) {
+                          final index = registeredTeamsSorted.indexOf(
+                            item.teamCode,
+                          );
+                          final teamNum = index != -1 ? index + 1 : 1;
+                          final maskedName = 'Team #$teamNum';
 
-                            return _SubmittedTeamCard(
-                              item: item,
-                              onOpenLink: _openExternalUrl,
-                              isAnonymous: isAnonymous,
-                              displayName: isAnonymous ? maskedName : item.teamName,
-                            );
-                          },
-                        ),
+                          return _SubmittedTeamCard(
+                            item: item,
+                            onOpenLink: _openExternalUrl,
+                            isAnonymous: isAnonymous,
+                            displayName:
+                                isAnonymous ? maskedName : item.teamName,
+                          );
+                        }),
                     ],
                   ),
                 );
@@ -247,6 +252,14 @@ class _SubmissionsReviewScreenState extends State<SubmissionsReviewScreen> {
       title: widget.title,
       subtitle: widget.subtitle,
       icon: Icons.fact_check_rounded,
+      leading:
+          Navigator.canPop(context)
+              ? ParticipantHeaderIconButton(
+                icon: Icons.arrow_back_rounded,
+                tooltip: 'Return',
+                onPressed: () => Navigator.maybePop(context),
+              )
+              : null,
       trailing: ParticipantInfoChip(label: trailingLabel, color: Colors.white),
       children: [body],
     );
@@ -525,7 +538,10 @@ class _SubmittedTeamCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           ParticipantBulletRow(
-            text: isAnonymous ? 'Leader: Anonymous' : 'Leader: ${item.leaderEmail}',
+            text:
+                isAnonymous
+                    ? 'Leader: Anonymous'
+                    : 'Leader: ${item.leaderEmail}',
             icon: Icons.person_outline_rounded,
             color: ParticipantPalette.secondary,
           ),

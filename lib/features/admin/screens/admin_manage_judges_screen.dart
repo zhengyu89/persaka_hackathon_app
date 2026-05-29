@@ -232,6 +232,25 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
 
                 children: [
+                  if (Navigator.canPop(context)) ...[
+                    GestureDetector(
+                      onTap: () => Navigator.maybePop(context),
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(.18),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back_rounded,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+                  ],
                   //////////////////////////////////////////////////
                   /// TITLE
                   //////////////////////////////////////////////////
