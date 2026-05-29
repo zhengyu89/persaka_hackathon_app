@@ -70,6 +70,7 @@ class _SettingsFormState extends State<_SettingsForm> {
   String _scoreScaleOption = '1-10';
   String _scoringMethod = 'Average Score';
   DateTime? _judgeSubmissionDeadline;
+  DateTime? _submissionDeadline;
   bool _requireProjectTitle = true;
   bool _requireDescription = true;
   bool _requireGithub = true;
@@ -101,6 +102,30 @@ class _SettingsFormState extends State<_SettingsForm> {
     super.dispose();
   }
 
+  String _formatDeadline(DateTime? dateTime) {
+    if (dateTime == null) {
+      return 'Not configured';
+    }
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    final day = dateTime.day;
+    final month = months[dateTime.month - 1];
+    final year = dateTime.year;
+
+    int hour = dateTime.hour;
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    final period = hour >= 12 ? 'PM' : 'AM';
+    if (hour > 12) {
+      hour -= 12;
+    } else if (hour == 0) {
+      hour = 12;
+    }
+
+    return '$day $month $year, $hour:$minute $period';
+  }
+
   void _hydrate(HackathonSummary hackathon) {
     final judging = hackathon.judgingRules;
     final requirements = hackathon.submissionRequirements;
@@ -112,7 +137,7 @@ class _SettingsFormState extends State<_SettingsForm> {
             : 'Custom';
     _scoreScaleController.text = scoreScale;
     _allowScoreEditing = judging['allowScoreEditing'] != false;
-    _anonymousJudging = judging['anonymousJudging'] == true;
+    _anonymousJudging = hackathon.anonymousJudging;
     _minimumJudgesController.text =
         (judging['minimumJudgesRequired'] ?? 1).toString();
     _scoringMethod = (judging['scoringMethod'] ?? 'Average Score').toString();
@@ -136,8 +161,8 @@ class _SettingsFormState extends State<_SettingsForm> {
     _requireGithub = requirements['requireGithub'] != false;
     _requireDemoVideo = requirements['requireDemoVideo'] == true;
     _requireSlides = requirements['requireSlides'] == true;
-    _submissionDeadlineController.text =
-        (requirements['submissionDeadline'] ?? '').toString();
+    _submissionDeadline = hackathon.submissionDeadline?.toDate();
+    _submissionDeadlineController.text = _formatDeadline(_submissionDeadline);
   }
 
   Future<void> _saveSettings() async {
@@ -178,8 +203,14 @@ class _SettingsFormState extends State<_SettingsForm> {
               'requireGithub': _requireGithub,
               'requireDemoVideo': _requireDemoVideo,
               'requireSlides': _requireSlides,
-              'submissionDeadline': _submissionDeadlineController.text.trim(),
+              'submissionDeadline': _submissionDeadline == null
+                  ? null
+                  : Timestamp.fromDate(_submissionDeadline!),
             },
+            'submissionDeadline': _submissionDeadline == null
+                ? null
+                : Timestamp.fromDate(_submissionDeadline!),
+            'anonymousJudging': _anonymousJudging,
           }, SetOptions(merge: true));
 
       if (!mounted) {
@@ -217,12 +248,20 @@ class _SettingsFormState extends State<_SettingsForm> {
       return;
     }
 
+    if (!mounted) {
+      return;
+    }
+
     final pickedTime = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(initialDate),
     );
 
     if (pickedTime == null) {
+      return;
+    }
+
+    if (!mounted) {
       return;
     }
 
@@ -240,23 +279,70 @@ class _SettingsFormState extends State<_SettingsForm> {
     });
   }
 
+  Future<void> _pickSubmissionDeadline() async {
+    final initialDate = _submissionDeadline ?? DateTime.now();
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+    );
+
+    if (pickedDate == null) {
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initialDate),
+    );
+
+    if (pickedTime == null) {
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    final deadline = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    setState(() {
+      _submissionDeadline = deadline;
+      _submissionDeadlineController.text = _formatDeadline(deadline);
+    });
+  }
+
   Future<void> _showCriteriaSheet({
     DocumentSnapshot<Map<String, dynamic>>? criterion,
   }) async {
-    final data = criterion?.data() ?? const <String, dynamic>{};
-    final nameController = TextEditingController(
-      text: (data['name'] ?? '').toString(),
-    );
-    final descriptionController = TextEditingController(
-      text: (data['description'] ?? '').toString(),
-    );
-    final weightController = TextEditingController(
-      text: (data['weight'] ?? 0).toString(),
-    );
-    final maxScoreController = TextEditingController(
-      text: (data['maxScore'] ?? 10).toString(),
-    );
-    var active = data['active'] != false;
+    final criteriaSnapshot =
+        await FirebaseFirestore.instance
+            .collection('hackathons')
+            .doc(widget.hackathon.id)
+            .collection('criteria')
+            .get();
+
+    if (!mounted) {
+      return;
+    }
+
+    final activeWeightExcluding = criteriaSnapshot.docs
+        .where((doc) => doc.id != criterion?.id && doc.data()['active'] != false)
+        .fold<double>(
+          0,
+          (total, doc) => total + _numberValue(doc.data()['weight']),
+        );
 
     await showModalBottomSheet<void>(
       context: context,
@@ -265,124 +351,13 @@ class _SettingsFormState extends State<_SettingsForm> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            return Padding(
-              padding: EdgeInsets.fromLTRB(
-                16,
-                18,
-                16,
-                MediaQuery.of(context).viewInsets.bottom + 18,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    criterion == null ? 'Add Criterion' : 'Edit Criterion',
-                    style: const TextStyle(
-                      color: Color(0xFF111827),
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: nameController,
-                    decoration: _inputDecoration('Criterion name'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: descriptionController,
-                    minLines: 2,
-                    maxLines: 3,
-                    decoration: _inputDecoration('Description'),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: weightController,
-                          keyboardType: TextInputType.number,
-                          decoration: _inputDecoration('Weight'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: maxScoreController,
-                          keyboardType: TextInputType.number,
-                          decoration: _inputDecoration('Max score'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SwitchListTile(
-                    value: active,
-                    onChanged:
-                        (value) => setSheetState(() {
-                          active = value;
-                        }),
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Active'),
-                    activeColor: const Color(0xFF4F39F6),
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        final payload = {
-                          'name': nameController.text.trim(),
-                          'description': descriptionController.text.trim(),
-                          'weight':
-                              double.tryParse(weightController.text.trim()) ??
-                              0,
-                          'maxScore':
-                              double.tryParse(maxScoreController.text.trim()) ??
-                              10,
-                          'active': active,
-                        };
-                        final collection = FirebaseFirestore.instance
-                            .collection('hackathons')
-                            .doc(widget.hackathon.id)
-                            .collection('criteria');
-                        if (criterion == null) {
-                          await collection.add(payload);
-                        } else {
-                          await collection
-                              .doc(criterion.id)
-                              .set(payload, SetOptions(merge: true));
-                        }
-                        if (context.mounted) {
-                          Navigator.pop(context);
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4F39F6),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: const Text('Save Criterion'),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+      builder:
+          (context) => _CriterionEditorSheet(
+            hackathonId: widget.hackathon.id,
+            criterion: criterion,
+            activeWeightExcludingCriterion: activeWeightExcluding,
+          ),
     );
-
-    nameController.dispose();
-    descriptionController.dispose();
-    weightController.dispose();
-    maxScoreController.dispose();
   }
 
   @override
@@ -466,10 +441,20 @@ class _SettingsFormState extends State<_SettingsForm> {
                   child: _SettingsSwitch(
                     title: 'Anonymous judging',
                     value: _anonymousJudging,
-                    onChanged:
-                        (value) => setState(() {
-                          _anonymousJudging = value;
-                        }),
+                    onChanged: (value) async {
+                      setState(() {
+                        _anonymousJudging = value;
+                      });
+                      try {
+                        await FirebaseFirestore.instance
+                            .collection('hackathons')
+                            .doc(widget.hackathon.id)
+                            .update({
+                          'anonymousJudging': value,
+                          'judgingRules.anonymousJudging': value,
+                        });
+                      } catch (_) {}
+                    },
                   ),
                 ),
                 _SettingField(
@@ -539,7 +524,7 @@ class _SettingsFormState extends State<_SettingsForm> {
             ),
           ),
           _SettingsCard(
-            title: 'Scoring Criteria',
+            title: 'Scoring Criteria Management',
             action: TextButton.icon(
               onPressed: () => _showCriteriaSheet(),
               icon: const Icon(Icons.add_rounded),
@@ -556,34 +541,43 @@ class _SettingsFormState extends State<_SettingsForm> {
                 final criteria =
                     snapshot.data?.docs ??
                     const <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+                final totalActiveWeight = criteria
+                    .where((doc) => doc.data()['active'] != false)
+                    .fold<double>(
+                      0,
+                      (total, doc) => total + _numberValue(doc.data()['weight']),
+                    );
                 if (criteria.isEmpty) {
-                  return const Text(
-                    'No criteria yet.',
-                    style: TextStyle(color: Color(0xFF6B7280)),
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'No criteria yet.',
+                        style: TextStyle(color: Color(0xFF6B7280)),
+                      ),
+                      const SizedBox(height: 14),
+                      _WeightSummary(totalWeight: totalActiveWeight),
+                    ],
                   );
                 }
                 return Column(
-                  children:
-                      criteria.map((doc) {
-                        final data = doc.data();
-                        return _CriteriaTile(
-                          name: (data['name'] ?? 'Untitled').toString(),
-                          description: (data['description'] ?? '').toString(),
-                          weight: (data['weight'] ?? 0).toString(),
-                          maxScore: (data['maxScore'] ?? 10).toString(),
-                          active: data['active'] != false,
-                          onTap: () => _showCriteriaSheet(criterion: doc),
-                        );
-                      }).toList(),
+                  children: [
+                    ...criteria.map((doc) {
+                      final data = doc.data();
+                      return _CriteriaTile(
+                        name: (data['name'] ?? 'Untitled').toString(),
+                        description: (data['description'] ?? '').toString(),
+                        weight: _numberValue(data['weight']),
+                        maxScore: _numberValue(data['maxScore'], fallback: 10),
+                        active: data['active'] != false,
+                        onTap: () => _showCriteriaSheet(criterion: doc),
+                      );
+                    }),
+                    const SizedBox(height: 14),
+                    _WeightSummary(totalWeight: totalActiveWeight),
+                  ],
                 );
               },
-            ),
-          ),
-          _SettingsCard(
-            title: 'Score Weightage',
-            child: const Text(
-              'Criteria weights are saved inside each criteria document.',
-              style: TextStyle(color: Color(0xFF6B7280), height: 1.4),
             ),
           ),
           _SettingsCard(
@@ -630,9 +624,35 @@ class _SettingsFormState extends State<_SettingsForm> {
                         _requireSlides = value;
                       }),
                 ),
-                TextField(
-                  controller: _submissionDeadlineController,
-                  decoration: _inputDecoration('Submission deadline'),
+                _SettingField(
+                  title: 'Submission Deadline',
+                  helper: 'Deadline for participants to submit their projects',
+                  child: TextField(
+                    controller: _submissionDeadlineController,
+                    readOnly: true,
+                    onTap: _pickSubmissionDeadline,
+                    decoration: _inputDecoration(
+                      'Select date and time',
+                    ).copyWith(
+                      suffixIcon: const Icon(Icons.calendar_month_rounded),
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed:
+                        _submissionDeadline == null
+                            ? null
+                            : () {
+                              setState(() {
+                                _submissionDeadline = null;
+                                _submissionDeadlineController.clear();
+                              });
+                            },
+                    icon: const Icon(Icons.close_rounded),
+                    label: const Text('Clear deadline'),
+                  ),
                 ),
               ],
             ),
@@ -802,25 +822,372 @@ class _CriteriaTile extends StatelessWidget {
 
   final String name;
   final String description;
-  final String weight;
-  final String maxScore;
+  final double weight;
+  final double maxScore;
   final bool active;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
+    return InkWell(
       onTap: onTap,
-      contentPadding: EdgeInsets.zero,
-      title: Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
-      subtitle: Text(
-        description.isEmpty
-            ? 'Weight $weight | Max $maxScore'
-            : '$description\nWeight $weight | Max $maxScore',
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              name,
+              style: const TextStyle(
+                color: Color(0xFF111827),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Description:',
+              style: TextStyle(
+                color: Color(0xFF374151),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              description.isEmpty ? '-' : description,
+              style: const TextStyle(color: Color(0xFF4B5563), height: 1.35),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Weight: ${_formatNumber(weight)}%',
+              style: const TextStyle(color: Color(0xFF111827)),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Max Score: ${_formatNumber(maxScore)}',
+              style: const TextStyle(color: Color(0xFF111827)),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Status: ${active ? 'Active' : 'Inactive'}',
+              style: TextStyle(
+                color:
+                    active ? const Color(0xFF16A34A) : const Color(0xFF6B7280),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const Divider(height: 28),
+          ],
+        ),
       ),
-      trailing: Icon(
-        active ? Icons.check_circle_rounded : Icons.pause_circle_outline,
-        color: active ? const Color(0xFF16A34A) : const Color(0xFF9CA3AF),
+    );
+  }
+}
+
+class _WeightSummary extends StatelessWidget {
+  const _WeightSummary({required this.totalWeight});
+
+  final double totalWeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final color =
+        totalWeight == 100
+            ? const Color(0xFF16A34A)
+            : totalWeight < 100
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFFDC2626);
+    final message =
+        totalWeight == 100
+            ? '✓ Weight distribution valid'
+            : totalWeight < 100
+            ? '⚠ Remaining weight: ${_formatNumber(100 - totalWeight)}%'
+            : '⚠ Total weight exceeds 100%';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Total Weight: ${_formatNumber(totalWeight)}%',
+            style: const TextStyle(
+              color: Color(0xFF111827),
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            style: TextStyle(color: color, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CriterionEditorSheet extends StatefulWidget {
+  const _CriterionEditorSheet({
+    required this.hackathonId,
+    required this.criterion,
+    required this.activeWeightExcludingCriterion,
+  });
+
+  final String hackathonId;
+  final DocumentSnapshot<Map<String, dynamic>>? criterion;
+  final double activeWeightExcludingCriterion;
+
+  @override
+  State<_CriterionEditorSheet> createState() => _CriterionEditorSheetState();
+}
+
+class _CriterionEditorSheetState extends State<_CriterionEditorSheet> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _descriptionController;
+  late final TextEditingController _weightController;
+  late final TextEditingController _maxScoreController;
+  bool _active = true;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final data = widget.criterion?.data() ?? const <String, dynamic>{};
+    _nameController = TextEditingController(
+      text: (data['name'] ?? '').toString(),
+    );
+    _descriptionController = TextEditingController(
+      text: (data['description'] ?? '').toString(),
+    );
+    _weightController = TextEditingController(
+      text: _formatNumber(_numberValue(data['weight'])),
+    );
+    _maxScoreController = TextEditingController(
+      text: _formatNumber(_numberValue(data['maxScore'], fallback: 10)),
+    );
+    _active = data['active'] != false;
+    _weightController.addListener(_refreshWeightPreview);
+  }
+
+  @override
+  void dispose() {
+    _weightController.removeListener(_refreshWeightPreview);
+    _nameController.dispose();
+    _descriptionController.dispose();
+    _weightController.dispose();
+    _maxScoreController.dispose();
+    super.dispose();
+  }
+
+  void _refreshWeightPreview() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  double get _enteredWeight => _numberValue(_weightController.text);
+
+  double get _currentActiveWeight =>
+      widget.activeWeightExcludingCriterion + (_active ? _enteredWeight : 0);
+
+  double get _remainingWeight => 100 - _currentActiveWeight;
+
+  Future<void> _saveCriterion() async {
+    final name = _nameController.text.trim();
+    final weight = double.tryParse(_weightController.text.trim()) ?? 0;
+    final maxScore = double.tryParse(_maxScoreController.text.trim()) ?? 0;
+    final totalActiveWeight =
+        widget.activeWeightExcludingCriterion + (_active ? weight : 0);
+
+    if (name.isEmpty) {
+      _showError('Criterion name required');
+      return;
+    }
+    if (weight <= 0) {
+      _showError('Weight must be greater than 0');
+      return;
+    }
+    if (weight > 100) {
+      _showError('Weight must be 100% or less');
+      return;
+    }
+    if (maxScore <= 0) {
+      _showError('Maximum judge score must be greater than 0');
+      return;
+    }
+    if (totalActiveWeight > 100) {
+      _showError('Total active criteria weight cannot exceed 100%');
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    final payload = {
+      'name': name,
+      'description': _descriptionController.text.trim(),
+      'weight': weight,
+      'maxScore': maxScore,
+      'active': _active,
+    };
+
+    try {
+      final collection = FirebaseFirestore.instance
+          .collection('hackathons')
+          .doc(widget.hackathonId)
+          .collection('criteria');
+      if (widget.criterion == null) {
+        await collection.add(payload);
+      } else {
+        await collection
+            .doc(widget.criterion!.id)
+            .set(payload, SetOptions(merge: true));
+      }
+
+      if (!mounted) {
+        return;
+      }
+      Navigator.pop(context);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      _showError('Failed to save criterion: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: const Color(0xFFDC2626)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          18,
+          16,
+          MediaQuery.of(context).viewInsets.bottom + 18,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.criterion == null ? 'Add Criterion' : 'Edit Criterion',
+                style: const TextStyle(
+                  color: Color(0xFF111827),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _nameController,
+                textInputAction: TextInputAction.next,
+                decoration: _inputDecoration('Criterion Name'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _descriptionController,
+                minLines: 2,
+                maxLines: 3,
+                decoration: _inputDecoration('Description'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _weightController,
+                keyboardType: TextInputType.number,
+                decoration: _inputDecoration('Weight Percentage (%)').copyWith(
+                  helperText: 'Contribution to final score',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _maxScoreController,
+                keyboardType: TextInputType.number,
+                decoration: _inputDecoration('Maximum Judge Score').copyWith(
+                  helperText: 'Highest score judge can assign',
+                ),
+              ),
+              const SizedBox(height: 4),
+              SwitchListTile(
+                value: _active,
+                onChanged:
+                    (value) => setState(() {
+                      _active = value;
+                    }),
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Active Criterion'),
+                activeColor: const Color(0xFF4F39F6),
+              ),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Current Active Weight: ${_formatNumber(_currentActiveWeight)}%',
+                      style: const TextStyle(
+                        color: Color(0xFF111827),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Remaining: ${_formatNumber(_remainingWeight)}%',
+                      style: TextStyle(
+                        color:
+                            _remainingWeight < 0
+                                ? const Color(0xFFDC2626)
+                                : const Color(0xFF16A34A),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isSaving ? null : _saveCriterion,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4F39F6),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Text(_isSaving ? 'Saving...' : 'Save Criterion'),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1583,4 +1950,18 @@ String _formatDateTime(DateTime? dateTime) {
   final hour = dateTime.hour.toString().padLeft(2, '0');
   final minute = dateTime.minute.toString().padLeft(2, '0');
   return '${dateTime.day}/${dateTime.month}/${dateTime.year} $hour:$minute';
+}
+
+double _numberValue(dynamic value, {double fallback = 0}) {
+  if (value is num) {
+    return value.toDouble();
+  }
+  return double.tryParse((value ?? '').toString()) ?? fallback;
+}
+
+String _formatNumber(double value) {
+  if (value % 1 == 0) {
+    return value.toInt().toString();
+  }
+  return value.toStringAsFixed(1);
 }

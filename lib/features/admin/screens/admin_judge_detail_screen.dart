@@ -160,7 +160,7 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
                 assignment["hackathonId"],
       );
 
-      await hackathonRef.update({"judgeAssignments": judgeAssignments});
+      await hackathonRef.update({"judgeAssignments": judgeAssignments.values.toList()});
 
       ////////////////////////////////////////////////////////
       /// REMOVE USER ASSIGNMENT
@@ -382,7 +382,7 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
                         //////////////////////////////////////////////////////
 
                         await hackathonRef.update({
-                          "judgeAssignments": judgeAssignments,
+                          "judgeAssignments": judgeAssignments.values.toList(),
                         });
 
                         //////////////////////////////////////////////////////
@@ -855,7 +855,7 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
                         }
 
                         await hackathonRef.update({
-                          "judgeAssignments": judgeAssignments,
+                          "judgeAssignments": judgeAssignments.values.toList(),
                         });
 
                         //////////////////////////////////////////////////////

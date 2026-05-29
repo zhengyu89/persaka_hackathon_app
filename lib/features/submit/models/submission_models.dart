@@ -54,6 +54,8 @@ class HackathonSummary {
     this.judgingRules = const <String, dynamic>{},
     this.submissionRequirements = const <String, dynamic>{},
     this.judgeAssignments = const <String, dynamic>{},
+    this.submissionDeadline,
+    this.anonymousJudging = false,
   });
 
   final String id;
@@ -71,8 +73,34 @@ class HackathonSummary {
   final Map<String, dynamic> judgingRules;
   final Map<String, dynamic> submissionRequirements;
   final Map<String, dynamic> judgeAssignments;
+  final Timestamp? submissionDeadline;
+  final bool anonymousJudging;
 
   factory HackathonSummary.fromMap(String id, Map<String, dynamic> data) {
+    Timestamp? deadlineTs;
+    if (data['submissionDeadline'] is Timestamp) {
+      deadlineTs = data['submissionDeadline'] as Timestamp;
+    } else if (data['submissionRequirements'] != null &&
+        data['submissionRequirements']['submissionDeadline'] is Timestamp) {
+      deadlineTs = data['submissionRequirements']['submissionDeadline'] as Timestamp;
+    } else {
+      final deadlineStr = data['submissionDeadline'] ?? data['submissionRequirements']?['submissionDeadline'];
+      if (deadlineStr != null) {
+        final parsed = DateTime.tryParse(deadlineStr.toString());
+        if (parsed != null) {
+          deadlineTs = Timestamp.fromDate(parsed);
+        }
+      }
+    }
+
+    bool anonJudging = false;
+    if (data['anonymousJudging'] is bool) {
+      anonJudging = data['anonymousJudging'] as bool;
+    } else if (data['judgingRules'] != null &&
+        data['judgingRules']['anonymousJudging'] is bool) {
+      anonJudging = data['judgingRules']['anonymousJudging'] as bool;
+    }
+
     return HackathonSummary(
       id: id,
       title: (data['title'] ?? 'Untitled Hackathon').toString(),
@@ -95,6 +123,8 @@ class HackathonSummary {
         data['submissionRequirements'] ?? const <String, dynamic>{},
       ),
       judgeAssignments: _normalizeJudgeAssignments(data['judgeAssignments']),
+      submissionDeadline: deadlineTs,
+      anonymousJudging: anonJudging,
     );
   }
 

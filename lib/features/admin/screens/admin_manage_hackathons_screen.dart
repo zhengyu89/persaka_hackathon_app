@@ -465,7 +465,7 @@ class _AdminAddHackathonScreenState extends State<AdminAddHackathonScreen> {
             .set(payload, SetOptions(merge: true));
       } else {
         payload['registeredTeams'] = <String>[];
-        payload['judgeAssignments'] = <String, dynamic>{};
+        payload['judgeAssignments'] = <Map<String, dynamic>>[];
         payload['createdAt'] = FieldValue.serverTimestamp();
         payload['createdBy'] = FirebaseAuth.instance.currentUser?.email;
         payload['judgingRules'] = {

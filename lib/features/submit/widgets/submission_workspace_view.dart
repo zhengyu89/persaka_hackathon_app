@@ -180,6 +180,8 @@ class SubmissionWorkspaceView extends StatelessWidget {
           onOpenLink: onOpenLink,
           lastUpdated: data.existingSubmission?.updatedAt?.toDate(),
           submittedByEmail: data.existingSubmission?.submittedByEmail ?? '',
+          isDeadlinePassed: selectedHackathon.submissionDeadline != null &&
+              DateTime.now().isAfter(selectedHackathon.submissionDeadline!.toDate()),
         ),
       ],
     );
@@ -196,6 +198,7 @@ class SubmissionLinksFormCard extends StatefulWidget {
     required this.onOpenLink,
     this.lastUpdated,
     this.submittedByEmail = '',
+    this.isDeadlinePassed = false,
   });
 
   final String initialRepositoryUrl;
@@ -205,6 +208,7 @@ class SubmissionLinksFormCard extends StatefulWidget {
   final Future<void> Function(String url) onOpenLink;
   final DateTime? lastUpdated;
   final String submittedByEmail;
+  final bool isDeadlinePassed;
 
   @override
   State<SubmissionLinksFormCard> createState() =>
@@ -273,9 +277,44 @@ class _SubmissionLinksFormCardState extends State<SubmissionLinksFormCard> {
                       : 'Last updated ${_formatDateTime(widget.lastUpdated!)} by ${widget.submittedByEmail.isEmpty ? 'your team leader' : widget.submittedByEmail}.',
             ),
             const SizedBox(height: 8),
+            if (widget.isDeadlinePassed) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: ParticipantPalette.danger.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: ParticipantPalette.danger.withOpacity(0.24),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      color: ParticipantPalette.danger,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Submission deadline has passed.',
+                        style: TextStyle(
+                          color: ParticipantPalette.danger.withOpacity(0.9),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             TextFormField(
               controller: _repositoryController,
               onChanged: (_) => setState(() {}),
+              enabled: !widget.isDeadlinePassed,
               validator: SubmissionValidators.validateRepositoryUrl,
               decoration: _inputDecoration(
                 label: 'GitHub Repository URL',
@@ -287,6 +326,7 @@ class _SubmissionLinksFormCardState extends State<SubmissionLinksFormCard> {
             TextFormField(
               controller: _videoController,
               onChanged: (_) => setState(() {}),
+              enabled: !widget.isDeadlinePassed,
               validator: SubmissionValidators.validateVideoUrl,
               decoration: _inputDecoration(
                 label: 'Project Video URL',
@@ -321,7 +361,7 @@ class _SubmissionLinksFormCardState extends State<SubmissionLinksFormCard> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: widget.isSaving ? null : _handleSave,
+                onPressed: (widget.isSaving || widget.isDeadlinePassed) ? null : _handleSave,
                 icon:
                     widget.isSaving
                         ? const SizedBox(
@@ -337,6 +377,8 @@ class _SubmissionLinksFormCardState extends State<SubmissionLinksFormCard> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: ParticipantPalette.primary,
                   foregroundColor: Colors.white,
+                  disabledBackgroundColor: const Color(0xFFE5E7EB),
+                  disabledForegroundColor: const Color(0xFF9CA3AF),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),

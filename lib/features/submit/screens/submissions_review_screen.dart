@@ -172,6 +172,9 @@ class _SubmissionsReviewScreenState extends State<SubmissionsReviewScreen> {
                         )
                         .toList();
 
+                final isAnonymous = selectedHackathon.anonymousJudging && widget.title != 'Submitted Projects';
+                final registeredTeamsSorted = List<String>.from(selectedHackathon.registeredTeams)..sort();
+
                 return _buildScaffold(
                   trailingLabel:
                       '${selectedHackathon.registeredTeams.length} Teams',
@@ -206,10 +209,18 @@ class _SubmissionsReviewScreenState extends State<SubmissionsReviewScreen> {
                         )
                       else
                         ...reviewItems.map(
-                          (item) => _SubmittedTeamCard(
-                            item: item,
-                            onOpenLink: _openExternalUrl,
-                          ),
+                          (item) {
+                            final index = registeredTeamsSorted.indexOf(item.teamCode);
+                            final teamNum = index != -1 ? index + 1 : 1;
+                            final maskedName = 'Team #$teamNum';
+
+                            return _SubmittedTeamCard(
+                              item: item,
+                              onOpenLink: _openExternalUrl,
+                              isAnonymous: isAnonymous,
+                              displayName: isAnonymous ? maskedName : item.teamName,
+                            );
+                          },
                         ),
                     ],
                   ),
@@ -451,10 +462,17 @@ class _TeamReviewItem {
 }
 
 class _SubmittedTeamCard extends StatelessWidget {
-  const _SubmittedTeamCard({required this.item, required this.onOpenLink});
+  const _SubmittedTeamCard({
+    required this.item,
+    required this.onOpenLink,
+    required this.isAnonymous,
+    required this.displayName,
+  });
 
   final _TeamReviewItem item;
   final Future<void> Function(String url) onOpenLink;
+  final bool isAnonymous;
+  final String displayName;
 
   @override
   Widget build(BuildContext context) {
@@ -470,7 +488,7 @@ class _SubmittedTeamCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.teamName,
+                      displayName,
                       style: const TextStyle(
                         color: ParticipantPalette.textPrimary,
                         fontSize: 18,
@@ -478,20 +496,21 @@ class _SubmittedTeamCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        ParticipantInfoChip(
-                          label: 'Code ${item.teamCode}',
-                          color: ParticipantPalette.primary,
-                        ),
-                        ParticipantInfoChip(
-                          label: '${item.memberCount} Members',
-                          color: ParticipantPalette.secondary,
-                        ),
-                      ],
-                    ),
+                    if (!isAnonymous)
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          ParticipantInfoChip(
+                            label: 'Code ${item.teamCode}',
+                            color: ParticipantPalette.primary,
+                          ),
+                          ParticipantInfoChip(
+                            label: '${item.memberCount} Members',
+                            color: ParticipantPalette.secondary,
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -506,7 +525,7 @@ class _SubmittedTeamCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           ParticipantBulletRow(
-            text: 'Leader: ${item.leaderEmail}',
+            text: isAnonymous ? 'Leader: Anonymous' : 'Leader: ${item.leaderEmail}',
             icon: Icons.person_outline_rounded,
             color: ParticipantPalette.secondary,
           ),

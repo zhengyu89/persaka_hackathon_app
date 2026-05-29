@@ -14,6 +14,7 @@ class TeamScreen extends StatelessWidget {
     this.allowTeamActions = true,
     this.title,
     this.subtitle,
+    this.isJudgeView = false,
   });
 
   const TeamScreen.viewer({
@@ -21,6 +22,7 @@ class TeamScreen extends StatelessWidget {
     this.title = 'Team Directory',
     this.subtitle =
         'Browse every registered team, member list, and hackathon enrollment.',
+    this.isJudgeView = false,
   }) : viewAllTeams = true,
        allowTeamActions = false;
 
@@ -28,6 +30,7 @@ class TeamScreen extends StatelessWidget {
   final bool allowTeamActions;
   final String? title;
   final String? subtitle;
+  final bool isJudgeView;
 
   @override
   Widget build(BuildContext context) {
@@ -107,6 +110,7 @@ class TeamScreen extends StatelessWidget {
           allowTeamActions: allowTeamActions,
           title: title,
           subtitle: subtitle,
+          isJudgeView: isJudgeView,
         );
       },
     );
@@ -243,6 +247,7 @@ class _TeamsWorkspaceView extends StatelessWidget {
     required this.allowTeamActions,
     this.title,
     this.subtitle,
+    required this.isJudgeView,
   });
 
   final String currentEmail;
@@ -250,6 +255,7 @@ class _TeamsWorkspaceView extends StatelessWidget {
   final bool allowTeamActions;
   final String? title;
   final String? subtitle;
+  final bool isJudgeView;
 
   @override
   Widget build(BuildContext context) {
@@ -307,6 +313,8 @@ class _TeamsWorkspaceView extends StatelessWidget {
             currentEmail: currentEmail,
             teamDoc: doc,
             allowTeamActions: allowTeamActions,
+            isJudgeView: isJudgeView,
+            teamDocs: teamDocs,
           ),
         ),
       ],
@@ -362,11 +370,15 @@ class _TeamCard extends StatelessWidget {
     required this.currentEmail,
     required this.teamDoc,
     required this.allowTeamActions,
+    required this.isJudgeView,
+    required this.teamDocs,
   });
 
   final String currentEmail;
   final QueryDocumentSnapshot<Map<String, dynamic>> teamDoc;
   final bool allowTeamActions;
+  final bool isJudgeView;
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> teamDocs;
 
   @override
   Widget build(BuildContext context) {
@@ -378,184 +390,208 @@ class _TeamCard extends StatelessWidget {
     final members = List<String>.from(data['members'] ?? const []);
     final isLeader = leader == currentEmail;
 
-    return ParticipantCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('hackathons')
+          .where('registeredTeams', arrayContains: teamCode)
+          .snapshots(),
+      builder: (context, hackathonsSnapshot) {
+        final hackathons = hackathonsSnapshot.data?.docs ?? [];
+        final hasAnonymousHackathon = hackathons.any((doc) =>
+            doc.data()['anonymousJudging'] == true ||
+            (doc.data()['judgingRules'] != null &&
+                doc.data()['judgingRules']['anonymousJudging'] == true));
+
+        final bool maskIdentity = isJudgeView && hasAnonymousHackathon;
+
+        // Calculate stable team index alphabetically
+        String teamDisplayName = teamName;
+        if (maskIdentity) {
+          final sortedCodes = teamDocs.map((doc) => doc.id).toList()..sort();
+          final index = sortedCodes.indexOf(teamDoc.id);
+          teamDisplayName = 'Team #${index != -1 ? index + 1 : 1}';
+        }
+
+        final displayDescription = maskIdentity ? 'Anonymous Team' : (description.isEmpty ? 'No team description has been added yet.' : description);
+        final displayLeader = maskIdentity ? 'Team owner: Anonymous' : (leader.isEmpty ? 'No owner recorded for this team.' : 'Team owner: $leader');
+
+        return ParticipantCard(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 58,
-                height: 58,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFF615FFF),
-                      Color(0xFF9810FA),
-                    ],
-                  ),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.groups_rounded,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      teamName,
-                      style: const TextStyle(
-                        color: ParticipantPalette.textPrimary,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFF615FFF),
+                          Color(0xFF9810FA),
+                        ],
                       ),
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                    child: const Icon(
+                      Icons.groups_rounded,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _InfoTag(
-                          label: 'Code $teamCode',
-                          backgroundColor: const Color(0xFFEEF2FF),
-                          textColor: ParticipantPalette.primary,
+                        Text(
+                          teamDisplayName,
+                          style: const TextStyle(
+                            color: ParticipantPalette.textPrimary,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                        _InfoTag(
-                          label: '${members.length} Members',
-                          backgroundColor: const Color(0xFFF4F4F5),
-                          textColor: const Color(0xFF4B5563),
-                        ),
-                        _InfoTag(
-                          label: allowTeamActions
-                              ? (isLeader ? 'Owner' : 'Member')
-                              : 'View Only',
-                          backgroundColor: allowTeamActions && isLeader
-                              ? const Color(0xFFFFF4DB)
-                              : const Color(0xFFEFF6FF),
-                          textColor: allowTeamActions && isLeader
-                              ? const Color(0xFFB45309)
-                              : const Color(0xFF1D4ED8),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            if (!maskIdentity)
+                              _InfoTag(
+                                label: 'Code $teamCode',
+                                backgroundColor: const Color(0xFFEEF2FF),
+                                textColor: ParticipantPalette.primary,
+                              ),
+                            _InfoTag(
+                              label: '${members.length} Members',
+                              backgroundColor: const Color(0xFFF4F4F5),
+                              textColor: const Color(0xFF4B5563),
+                            ),
+                            _InfoTag(
+                              label: allowTeamActions
+                                  ? (isLeader ? 'Owner' : 'Member')
+                                  : (maskIdentity ? 'Anonymous' : 'View Only'),
+                              backgroundColor: allowTeamActions && isLeader
+                                  ? const Color(0xFFFFF4DB)
+                                  : const Color(0xFFEFF6FF),
+                              textColor: allowTeamActions && isLeader
+                                  ? const Color(0xFFB45309)
+                                  : const Color(0xFF1D4ED8),
+                            ),
+                          ],
                         ),
                       ],
                     ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              ParticipantBulletRow(
+                text: displayDescription,
+                icon: Icons.lightbulb_outline_rounded,
+                color: ParticipantPalette.primary,
+              ),
+              ParticipantBulletRow(
+                text: displayLeader,
+                icon: Icons.person_outline_rounded,
+                color: ParticipantPalette.secondary,
+              ),
+              const SizedBox(height: 6),
+              if (allowTeamActions && isLeader)
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        _openHackathonJoinSheet(
+                          context,
+                          teamCode: teamCode,
+                          teamName: teamName,
+                        );
+                      },
+                      icon: const Icon(Icons.rocket_launch_rounded),
+                      label: const Text('Join Hackathon'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: ParticipantPalette.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        _deleteTeam(
+                          context,
+                          teamDocId: teamDoc.id,
+                          teamCode: teamCode,
+                          teamName: teamName,
+                        );
+                      },
+                      icon: const Icon(Icons.delete_outline_rounded),
+                      label: const Text('Delete Team'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: ParticipantPalette.danger,
+                        side: const BorderSide(
+                          color: ParticipantPalette.danger,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
                   ],
+                )
+              else if (allowTeamActions)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Text(
+                    'Only $leader can delete this team or register it for hackathons.',
+                    style: const TextStyle(
+                      color: ParticipantPalette.textSecondary,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
                 ),
+              const SizedBox(height: 22),
+              const ParticipantSectionHeader(
+                title: 'Members',
+                subtitle: 'Everyone currently assigned to this team.',
+              ),
+              const SizedBox(height: 4),
+              ...members.map(
+                (member) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _MemberTile(email: member, isAnonymous: maskIdentity),
+                ),
+              ),
+              const SizedBox(height: 10),
+              _TeamHackathonsSection(
+                teamCode: teamCode,
+                teamName: teamDisplayName,
+                canJoinHackathons:
+                    allowTeamActions && isLeader,
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          ParticipantBulletRow(
-            text: description.isEmpty
-                ? 'No team description has been added yet.'
-                : description,
-            icon: Icons.lightbulb_outline_rounded,
-            color: ParticipantPalette.primary,
-          ),
-          ParticipantBulletRow(
-            text: leader.isEmpty
-                ? 'No owner recorded for this team.'
-                : 'Team owner: $leader',
-            icon: Icons.person_outline_rounded,
-            color: ParticipantPalette.secondary,
-          ),
-          const SizedBox(height: 6),
-          if (allowTeamActions && isLeader)
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: () {
-                    _openHackathonJoinSheet(
-                      context,
-                      teamCode: teamCode,
-                      teamName: teamName,
-                    );
-                  },
-                  icon: const Icon(Icons.rocket_launch_rounded),
-                  label: const Text('Join Hackathon'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: ParticipantPalette.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    _deleteTeam(
-                      context,
-                      teamDocId: teamDoc.id,
-                      teamCode: teamCode,
-                      teamName: teamName,
-                    );
-                  },
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  label: const Text('Delete Team'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: ParticipantPalette.danger,
-                    side: const BorderSide(
-                      color: ParticipantPalette.danger,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
-              ],
-            )
-          else if (allowTeamActions)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Text(
-                'Only $leader can delete this team or register it for hackathons.',
-                style: const TextStyle(
-                  color: ParticipantPalette.textSecondary,
-                  fontSize: 13,
-                  height: 1.4,
-                ),
-              ),
-            ),
-          const SizedBox(height: 22),
-          const ParticipantSectionHeader(
-            title: 'Members',
-            subtitle: 'Everyone currently assigned to this team.',
-          ),
-          const SizedBox(height: 4),
-          ...members.map(
-            (member) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _MemberTile(email: member),
-            ),
-          ),
-          const SizedBox(height: 10),
-          _TeamHackathonsSection(
-            teamCode: teamCode,
-            teamName: teamName,
-            canJoinHackathons:
-                allowTeamActions && isLeader,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -1073,12 +1109,17 @@ class _ActionCard extends StatelessWidget {
 class _MemberTile extends StatelessWidget {
   const _MemberTile({
     required this.email,
+    this.isAnonymous = false,
   });
 
   final String email;
+  final bool isAnonymous;
 
   @override
   Widget build(BuildContext context) {
+    final displayText = isAnonymous ? 'Anonymous Member' : email;
+    final initial = isAnonymous ? 'M' : (email.isEmpty ? '?' : email[0].toUpperCase());
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -1091,14 +1132,14 @@ class _MemberTile extends StatelessWidget {
             radius: 22,
             backgroundColor: const Color(0xFF6C63FF),
             child: Text(
-              email.isEmpty ? '?' : email[0].toUpperCase(),
+              initial,
               style: const TextStyle(color: Colors.white),
             ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Text(
-              email,
+              displayText,
               style: const TextStyle(
                 color: ParticipantPalette.textPrimary,
                 fontWeight: FontWeight.w700,

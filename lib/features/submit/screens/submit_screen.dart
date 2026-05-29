@@ -295,6 +295,14 @@ class _SubmitScreenState extends State<SubmitScreen> {
               return;
             }
 
+            final deadline = selectedHackathon.submissionDeadline;
+            if (deadline != null && DateTime.now().isAfter(deadline.toDate())) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Submission deadline has passed.')),
+              );
+              return;
+            }
+
             await _saveSubmission(
               currentEmail: currentEmail,
               selectedTeam: selectedTeam,
@@ -371,6 +379,14 @@ class _SubmitScreenState extends State<SubmitScreen> {
     required String repositoryUrl,
     required String videoUrl,
   }) async {
+    final deadline = selectedHackathon.submissionDeadline;
+    if (deadline != null && DateTime.now().isAfter(deadline.toDate())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Submission deadline has passed.')),
+      );
+      return;
+    }
+
     final submissionId = submissionDocumentId(
       hackathonId: selectedHackathon.id,
       teamCode: selectedTeam.code,
