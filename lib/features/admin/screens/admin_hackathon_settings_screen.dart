@@ -70,6 +70,7 @@ class _SettingsFormState extends State<_SettingsForm> {
   String _scoreScaleOption = '1-10';
   String _scoringMethod = 'Average Score';
   DateTime? _judgeSubmissionDeadline;
+  DateTime? _submissionDeadline;
   bool _requireProjectTitle = true;
   bool _requireDescription = true;
   bool _requireGithub = true;
@@ -101,6 +102,30 @@ class _SettingsFormState extends State<_SettingsForm> {
     super.dispose();
   }
 
+  String _formatDeadline(DateTime? dateTime) {
+    if (dateTime == null) {
+      return 'Not configured';
+    }
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    final day = dateTime.day;
+    final month = months[dateTime.month - 1];
+    final year = dateTime.year;
+
+    int hour = dateTime.hour;
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    final period = hour >= 12 ? 'PM' : 'AM';
+    if (hour > 12) {
+      hour -= 12;
+    } else if (hour == 0) {
+      hour = 12;
+    }
+
+    return '$day $month $year, $hour:$minute $period';
+  }
+
   void _hydrate(HackathonSummary hackathon) {
     final judging = hackathon.judgingRules;
     final requirements = hackathon.submissionRequirements;
@@ -112,7 +137,7 @@ class _SettingsFormState extends State<_SettingsForm> {
             : 'Custom';
     _scoreScaleController.text = scoreScale;
     _allowScoreEditing = judging['allowScoreEditing'] != false;
-    _anonymousJudging = judging['anonymousJudging'] == true;
+    _anonymousJudging = hackathon.anonymousJudging;
     _minimumJudgesController.text =
         (judging['minimumJudgesRequired'] ?? 1).toString();
     _scoringMethod = (judging['scoringMethod'] ?? 'Average Score').toString();
@@ -136,8 +161,8 @@ class _SettingsFormState extends State<_SettingsForm> {
     _requireGithub = requirements['requireGithub'] != false;
     _requireDemoVideo = requirements['requireDemoVideo'] == true;
     _requireSlides = requirements['requireSlides'] == true;
-    _submissionDeadlineController.text =
-        (requirements['submissionDeadline'] ?? '').toString();
+    _submissionDeadline = hackathon.submissionDeadline?.toDate();
+    _submissionDeadlineController.text = _formatDeadline(_submissionDeadline);
   }
 
   Future<void> _saveSettings() async {
@@ -178,8 +203,14 @@ class _SettingsFormState extends State<_SettingsForm> {
               'requireGithub': _requireGithub,
               'requireDemoVideo': _requireDemoVideo,
               'requireSlides': _requireSlides,
-              'submissionDeadline': _submissionDeadlineController.text.trim(),
+              'submissionDeadline': _submissionDeadline == null
+                  ? null
+                  : Timestamp.fromDate(_submissionDeadline!),
             },
+            'submissionDeadline': _submissionDeadline == null
+                ? null
+                : Timestamp.fromDate(_submissionDeadline!),
+            'anonymousJudging': _anonymousJudging,
           }, SetOptions(merge: true));
 
       if (!mounted) {
@@ -245,6 +276,50 @@ class _SettingsFormState extends State<_SettingsForm> {
     setState(() {
       _judgeSubmissionDeadline = deadline;
       _judgeSubmissionDeadlineController.text = _formatDateTime(deadline);
+    });
+  }
+
+  Future<void> _pickSubmissionDeadline() async {
+    final initialDate = _submissionDeadline ?? DateTime.now();
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+    );
+
+    if (pickedDate == null) {
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initialDate),
+    );
+
+    if (pickedTime == null) {
+      return;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    final deadline = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    setState(() {
+      _submissionDeadline = deadline;
+      _submissionDeadlineController.text = _formatDeadline(deadline);
     });
   }
 
@@ -366,10 +441,20 @@ class _SettingsFormState extends State<_SettingsForm> {
                   child: _SettingsSwitch(
                     title: 'Anonymous judging',
                     value: _anonymousJudging,
-                    onChanged:
-                        (value) => setState(() {
-                          _anonymousJudging = value;
-                        }),
+                    onChanged: (value) async {
+                      setState(() {
+                        _anonymousJudging = value;
+                      });
+                      try {
+                        await FirebaseFirestore.instance
+                            .collection('hackathons')
+                            .doc(widget.hackathon.id)
+                            .update({
+                          'anonymousJudging': value,
+                          'judgingRules.anonymousJudging': value,
+                        });
+                      } catch (_) {}
+                    },
                   ),
                 ),
                 _SettingField(
@@ -539,9 +624,35 @@ class _SettingsFormState extends State<_SettingsForm> {
                         _requireSlides = value;
                       }),
                 ),
-                TextField(
-                  controller: _submissionDeadlineController,
-                  decoration: _inputDecoration('Submission deadline'),
+                _SettingField(
+                  title: 'Submission Deadline',
+                  helper: 'Deadline for participants to submit their projects',
+                  child: TextField(
+                    controller: _submissionDeadlineController,
+                    readOnly: true,
+                    onTap: _pickSubmissionDeadline,
+                    decoration: _inputDecoration(
+                      'Select date and time',
+                    ).copyWith(
+                      suffixIcon: const Icon(Icons.calendar_month_rounded),
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed:
+                        _submissionDeadline == null
+                            ? null
+                            : () {
+                              setState(() {
+                                _submissionDeadline = null;
+                                _submissionDeadlineController.clear();
+                              });
+                            },
+                    icon: const Icon(Icons.close_rounded),
+                    label: const Text('Clear deadline'),
+                  ),
                 ),
               ],
             ),

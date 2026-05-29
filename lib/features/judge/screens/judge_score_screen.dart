@@ -77,172 +77,210 @@ class _JudgeScoreScreenState extends State<JudgeScoreScreen> {
         .collection('judgeScores')
         .doc(judgeUid);
 
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream:
-          hackathonRef
-              .collection('criteria')
-              .where('active', isEqualTo: true)
-              .snapshots(),
-      builder: (context, criteriaSnapshot) {
-        final criteria =
-            criteriaSnapshot.data?.docs.map(JudgeCriterion.fromDocument).toList() ??
-            <JudgeCriterion>[];
-        criteria.sort((a, b) => b.weight.compareTo(a.weight));
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: hackathonRef.snapshots(),
+      builder: (context, hackathonSnapshot) {
+        final hackathonData = hackathonSnapshot.data?.data() ?? const <String, dynamic>{};
+        final isAnonymous = hackathonData['anonymousJudging'] == true ||
+            (hackathonData['judgingRules'] != null && hackathonData['judgingRules']['anonymousJudging'] == true);
 
-        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-          stream: scoreRef.snapshots(),
-          builder: (context, scoreSnapshot) {
-            final savedScore = scoreSnapshot.data?.data();
-            final submitted = savedScore?['submitted'] == true;
+        String teamDisplayName = widget.teamName ?? widget.teamId;
+        if (isAnonymous) {
+          final rawAssignmentsObj = hackathonData['judgeAssignments'];
+          final judgeAssignments = <Map<String, dynamic>>[];
+          if (rawAssignmentsObj is List) {
+            for (final item in rawAssignmentsObj) {
+              if (item is Map) {
+                judgeAssignments.add(Map<String, dynamic>.from(item));
+              }
+            }
+          } else if (rawAssignmentsObj is Map) {
+            for (final value in rawAssignmentsObj.values) {
+              if (value is Map) {
+                judgeAssignments.add(Map<String, dynamic>.from(value));
+              }
+            }
+          }
+          final assignedTeams = judgeAssignments
+              .where((assignment) => assignment['judgeId'] == judgeUid)
+              .map((assignment) => assignment['teamId'].toString())
+              .toSet()
+              .toList()
+            ..sort();
+          final index = assignedTeams.indexOf(widget.teamId);
+          teamDisplayName = 'Team #${index != -1 ? index + 1 : 1}';
+        }
 
-            _hydrateSavedScoreOnce(savedScore, criteria);
-            _syncCriteriaScores(criteria);
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream:
+              hackathonRef
+                  .collection('criteria')
+                  .where('active', isEqualTo: true)
+                  .snapshots(),
+          builder: (context, criteriaSnapshot) {
+            final criteria =
+                criteriaSnapshot.data?.docs.map(JudgeCriterion.fromDocument).toList() ??
+                <JudgeCriterion>[];
+            criteria.sort((a, b) => b.weight.compareTo(a.weight));
 
-            final totalScore = _calculateTotalScore(criteria);
+            return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+              stream: scoreRef.snapshots(),
+              builder: (context, scoreSnapshot) {
+                final savedScore = scoreSnapshot.data?.data();
+                final submitted = savedScore?['submitted'] == true;
 
-            return ParticipantPageScaffold(
-              title: 'Team Scoring',
-              subtitle:
-                  submitted
-                      ? 'Final scores have already been submitted for this team.'
-                      : 'Score each active rubric criterion for this team.',
-              icon: Icons.fact_check_rounded,
-              trailing: ParticipantInfoChip(
-                label: widget.teamName ?? widget.teamId,
-                color: Colors.white,
-              ),
-              children: [
-                if (criteriaSnapshot.connectionState == ConnectionState.waiting &&
-                    !criteriaSnapshot.hasData)
-                  const ParticipantCard(
-                    child: SizedBox(
-                      height: 180,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: ParticipantPalette.primary,
-                        ),
-                      ),
-                    ),
-                  )
-                else if (criteria.isEmpty)
-                  const _ScoreStateCard(
-                    title: 'No rubric configured yet',
-                    subtitle:
-                        'Scoring is disabled until the admin publishes active criteria.',
-                    icon: Icons.rule_folder_outlined,
-                  )
-                else ...[
-                  ParticipantCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ParticipantSectionHeader(
-                          title: 'Dynamic Score Sheet',
-                          subtitle:
-                              '${criteria.length} criteria loaded from the active rubric.',
-                        ),
-                        _JudgingStatusBanner(
-                          submitted: submitted,
-                          hasDraft: savedScore != null && !submitted,
-                          totalScore: totalScore,
-                        ),
-                        ...criteria.map(
-                          (criterion) => _CriterionScoreSlider(
-                            criterion: criterion,
-                            value: _scores[criterion.id] ?? 0,
-                            enabled: !submitted,
-                            onChanged:
-                                (value) => setState(() {
-                                  _scores[criterion.id] = value;
-                                }),
-                          ),
-                        ),
-                        TextField(
-                          controller: _commentController,
-                          enabled: !submitted,
-                          minLines: 3,
-                          maxLines: 5,
-                          decoration: InputDecoration(
-                            hintText: 'Judge comment',
-                            filled: true,
-                            fillColor: const Color(0xFFF8FAFC),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.all(16),
-                          ),
-                        ),
-                      ],
-                    ),
+                _hydrateSavedScoreOnce(savedScore, criteria);
+                _syncCriteriaScores(criteria);
+
+                final totalScore = _calculateTotalScore(criteria);
+
+                return ParticipantPageScaffold(
+                  title: 'Team Scoring',
+                  subtitle:
+                      submitted
+                          ? 'Final scores have already been submitted for this team.'
+                          : 'Score each active rubric criterion for this team.',
+                  icon: Icons.fact_check_rounded,
+                  trailing: ParticipantInfoChip(
+                    label: teamDisplayName,
+                    color: Colors.white,
                   ),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed:
-                              _isSaving || submitted
-                                  ? null
-                                  : () => _saveScores(
-                                    hackathonId: hackathonId,
-                                    judgeUid: judgeUid,
-                                    criteria: criteria,
-                                    submitFinal: false,
-                                  ),
-                          icon: const Icon(Icons.drafts_rounded),
-                          label: const Text('Save Draft'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: ParticipantPalette.primary,
-                            side: const BorderSide(
+                  children: [
+                    if (criteriaSnapshot.connectionState == ConnectionState.waiting &&
+                        !criteriaSnapshot.hasData)
+                      const ParticipantCard(
+                        child: SizedBox(
+                          height: 180,
+                          child: Center(
+                            child: CircularProgressIndicator(
                               color: ParticipantPalette.primary,
                             ),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
                           ),
+                        ),
+                      )
+                    else if (criteria.isEmpty)
+                      const _ScoreStateCard(
+                        title: 'No rubric configured yet',
+                        subtitle:
+                            'Scoring is disabled until the admin publishes active criteria.',
+                        icon: Icons.rule_folder_outlined,
+                      )
+                    else ...[
+                      ParticipantCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ParticipantSectionHeader(
+                              title: 'Dynamic Score Sheet',
+                              subtitle:
+                                  '${criteria.length} criteria loaded from the active rubric.',
+                            ),
+                            _JudgingStatusBanner(
+                              submitted: submitted,
+                              hasDraft: savedScore != null && !submitted,
+                              totalScore: totalScore,
+                            ),
+                            ...criteria.map(
+                              (criterion) => _CriterionScoreSlider(
+                                criterion: criterion,
+                                value: _scores[criterion.id] ?? 0,
+                                enabled: !submitted,
+                                onChanged:
+                                    (value) => setState(() {
+                                      _scores[criterion.id] = value;
+                                    }),
+                              ),
+                            ),
+                            TextField(
+                              controller: _commentController,
+                              enabled: !submitted,
+                              minLines: 3,
+                              maxLines: 5,
+                              decoration: InputDecoration(
+                                hintText: 'Judge comment',
+                                filled: true,
+                                fillColor: const Color(0xFFF8FAFC),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.all(16),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed:
-                              _isSaving || submitted
-                                  ? null
-                                  : () => _saveScores(
-                                    hackathonId: hackathonId,
-                                    judgeUid: judgeUid,
-                                    criteria: criteria,
-                                    submitFinal: true,
-                                  ),
-                          icon:
-                              _isSaving
-                                  ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                  : const Icon(Icons.check_circle_rounded),
-                          label: Text(_isSaving ? 'Saving...' : 'Submit Final'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: ParticipantPalette.primary,
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor: const Color(0xFFE5E7EB),
-                            disabledForegroundColor: const Color(0xFF9CA3AF),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed:
+                                  _isSaving || submitted
+                                      ? null
+                                      : () => _saveScores(
+                                        hackathonId: hackathonId,
+                                        judgeUid: judgeUid,
+                                        criteria: criteria,
+                                        submitFinal: false,
+                                        isAnonymous: isAnonymous,
+                                      ),
+                              icon: const Icon(Icons.drafts_rounded),
+                              label: const Text('Save Draft'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: ParticipantPalette.primary,
+                                side: const BorderSide(
+                                  color: ParticipantPalette.primary,
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed:
+                                  _isSaving || submitted
+                                      ? null
+                                      : () => _saveScores(
+                                        hackathonId: hackathonId,
+                                        judgeUid: judgeUid,
+                                        criteria: criteria,
+                                        submitFinal: true,
+                                        isAnonymous: isAnonymous,
+                                      ),
+                              icon:
+                                  _isSaving
+                                      ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                      : const Icon(Icons.check_circle_rounded),
+                              label: Text(_isSaving ? 'Saving...' : 'Submit Final'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: ParticipantPalette.primary,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor: const Color(0xFFE5E7EB),
+                                disabledForegroundColor: const Color(0xFF9CA3AF),
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
-                  ),
-                ],
-              ],
+                  ],
+                );
+              },
             );
           },
         );
@@ -295,6 +333,7 @@ class _JudgeScoreScreenState extends State<JudgeScoreScreen> {
     required String judgeUid,
     required List<JudgeCriterion> criteria,
     required bool submitFinal,
+    required bool isAnonymous,
   }) async {
     setState(() {
       _isSaving = true;
@@ -324,7 +363,7 @@ class _JudgeScoreScreenState extends State<JudgeScoreScreen> {
           },
       };
       final payload = {
-        'judgeUid': judgeUid,
+        'judgeId': judgeUid,
         'judgeName': judgeName,
         'criteriaScores': criterionScores,
         'totalScore': _calculateTotalScore(criteria),
@@ -334,12 +373,69 @@ class _JudgeScoreScreenState extends State<JudgeScoreScreen> {
         if (!submitFinal) 'updatedAt': FieldValue.serverTimestamp(),
       };
 
+      double averageScore = _calculateTotalScore(criteria);
+      int judgeCount = 1;
+
+      if (submitFinal) {
+        try {
+          final scoresSnapshot = await FirebaseFirestore.instance
+              .collection('hackathons')
+              .doc(hackathonId)
+              .collection('judgingResults')
+              .doc(widget.teamId)
+              .collection('judgeScores')
+              .get();
+
+          double totalScoreSum = _calculateTotalScore(criteria);
+          int count = 1;
+
+          for (final doc in scoresSnapshot.docs) {
+            if (doc.id == judgeUid) continue;
+            final data = doc.data();
+            if (data['submitted'] == true) {
+              totalScoreSum += (data['totalScore'] as num?)?.toDouble() ?? 0;
+              count++;
+            }
+          }
+          averageScore = count > 0 ? (totalScoreSum / count) : 0;
+          judgeCount = count;
+        } catch (_) {}
+      }
+
+      String realTeamName = widget.teamName ?? 'Team';
+      if (isAnonymous || realTeamName.startsWith('Team #')) {
+        try {
+          final teamSnapshot = await FirebaseFirestore.instance
+              .collection('teams')
+              .doc(widget.teamId)
+              .get();
+          if (teamSnapshot.exists) {
+            realTeamName = (teamSnapshot.data()?['teamName'] ?? 'Team').toString();
+          }
+        } catch (_) {}
+      }
+
       await FirebaseFirestore.instance.runTransaction((transaction) async {
         final existing = await transaction.get(scoreRef);
         if (existing.data()?['submitted'] == true) {
           throw const _DuplicateFinalSubmissionException();
         }
         transaction.set(scoreRef, payload, SetOptions(merge: true));
+
+        if (submitFinal) {
+          final parentDocRef = FirebaseFirestore.instance
+              .collection('hackathons')
+              .doc(hackathonId)
+              .collection('judgingResults')
+              .doc(widget.teamId);
+
+          transaction.set(parentDocRef, {
+            'teamId': widget.teamId,
+            'teamName': realTeamName,
+            'averageScore': averageScore,
+            'totalJudges': judgeCount,
+          }, SetOptions(merge: true));
+        }
       });
 
       if (!mounted) {

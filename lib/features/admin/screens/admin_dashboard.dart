@@ -383,7 +383,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             context,
                             MaterialPageRoute(
                               builder:
-                                  (_) => const AdminManageHackathonsScreen(),
+                                  (_) => const AdminAddHackathonScreen(),
                             ),
                           );
                         },
@@ -429,10 +429,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         ),
                       ),
 
-                      const ActionCard(
-                        title: "Schedule Event",
-                        icon: Icons.calendar_month_rounded,
-                        gradient: [Color(0xFF16A34A), Color(0xFF22C55E)],
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AdminManageHackathonsScreen(),
+                            ),
+                          );
+                        },
+                        child: const ActionCard(
+                          title: "Schedule Event",
+                          icon: Icons.calendar_month_rounded,
+                          gradient: [Color(0xFF16A34A), Color(0xFF22C55E)],
+                        ),
                       ),
                     ],
                   ),
@@ -444,26 +454,52 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
                   const SizedBox(height: 16),
 
-                  const TaskCard(
+                  TaskCard(
                     title: "Team Registration",
                     subtitle: "Code Warriors needs approval",
                     time: "5 min ago",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const TeamScreen.viewer(
+                            title: "Registered Teams",
+                          ),
+                        ),
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 12),
 
-                  const TaskCard(
+                  TaskCard(
                     title: "Submission Review",
                     subtitle: "AI Innovators submitted project",
                     time: "12 min ago",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SubmissionsReviewScreen.admin(),
+                        ),
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 12),
 
-                  const TaskCard(
+                  TaskCard(
                     title: "Judge Assignment",
                     subtitle: "2 teams need judges assigned",
                     time: "30 min ago",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AdminManageJudgesScreen(),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -651,103 +687,108 @@ class TaskCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final String time;
+  final VoidCallback? onTap;
 
   const TaskCard({
     super.key,
     required this.title,
     required this.subtitle,
     required this.time,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(18),
 
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
 
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF3C7),
-              borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
             ),
+          ],
+        ),
 
-            child: const Icon(
-              Icons.pending_actions_rounded,
-              color: Color(0xFFD97706),
-            ),
-          ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
 
-          const SizedBox(width: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(14),
+              ),
 
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15,
-                  ),
-                ),
-
-                const SizedBox(height: 4),
-
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: Color(0xFF6B7280),
-                    fontSize: 13,
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                Text(
-                  time,
-                  style: const TextStyle(
-                    color: Color(0xFF9CA3AF),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-
-            decoration: BoxDecoration(
-              color: const Color(0xFFFEF3C7),
-              borderRadius: BorderRadius.circular(12),
-            ),
-
-            child: const Text(
-              "Review",
-              style: TextStyle(
+              child: const Icon(
+                Icons.pending_actions_rounded,
                 color: Color(0xFFD97706),
-                fontWeight: FontWeight.w700,
               ),
             ),
-          ),
-        ],
+
+            const SizedBox(width: 14),
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: Color(0xFF6B7280),
+                      fontSize: 13,
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  Text(
+                    time,
+                    style: const TextStyle(
+                      color: Color(0xFF9CA3AF),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(12),
+              ),
+
+              child: const Text(
+                "Review",
+                style: TextStyle(
+                  color: Color(0xFFD97706),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

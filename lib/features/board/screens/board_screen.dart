@@ -1,69 +1,275 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../../shared/widgets/participant_ui.dart';
+import '../../submit/models/submission_models.dart';
 
-class BoardScreen extends StatelessWidget {
-  const BoardScreen({super.key});
+class BoardScreen extends StatefulWidget {
+  const BoardScreen({super.key, this.isJudgeView = false});
+
+  final bool isJudgeView;
+
+  @override
+  State<BoardScreen> createState() => _BoardScreenState();
+}
+
+class _BoardScreenState extends State<BoardScreen> {
+  String? _selectedHackathonId;
 
   @override
   Widget build(BuildContext context) {
-    return ParticipantPageScaffold(
-      title: 'Leaderboard',
-      subtitle:
-          'A participant board screen for rankings, judging categories, and movement indicators.',
-      icon: Icons.leaderboard_rounded,
-      trailing: const ParticipantInfoChip(
-        label: 'Live Board',
-        color: Colors.white,
-      ),
-      children: const [
-        _TopThreeCard(),
-        _RankingListCard(),
-        _JudgingBreakdownCard(),
-      ],
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance.collection('hackathons').snapshots(),
+      builder: (context, hackathonSnapshot) {
+        if (hackathonSnapshot.connectionState == ConnectionState.waiting &&
+            !hackathonSnapshot.hasData) {
+          return const ParticipantPageScaffold(
+            title: 'Leaderboard',
+            subtitle: 'Rankings and team stats are loading in real-time.',
+            icon: Icons.leaderboard_rounded,
+            trailing: ParticipantInfoChip(
+              label: 'Loading',
+              color: Colors.white,
+            ),
+            children: [
+              ParticipantCard(
+                child: SizedBox(
+                  height: 200,
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: ParticipantPalette.primary,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+
+        final hackathons = hackathonSnapshot.data?.docs
+                .map(HackathonSummary.fromDocument)
+                .toList() ??
+            <HackathonSummary>[];
+
+        if (hackathons.isEmpty) {
+          return const ParticipantPageScaffold(
+            title: 'Leaderboard',
+            subtitle: 'Real-time team rankings and scores.',
+            icon: Icons.leaderboard_rounded,
+            trailing: ParticipantInfoChip(
+              label: '0 Events',
+              color: Colors.white,
+            ),
+            children: [
+              _LeaderboardStateCard(
+                title: 'No events created yet',
+                subtitle: 'Real-time scores will appear once an administrator publishes a hackathon and judging begins.',
+                icon: Icons.emoji_events_outlined,
+              ),
+            ],
+          );
+        }
+
+        // Default to first hackathon if none is selected
+        final selectedId = _selectedHackathonId ?? hackathons.first.id;
+        final selectedHackathon = hackathons.firstWhere(
+          (h) => h.id == selectedId,
+          orElse: () => hackathons.first,
+        );
+
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('hackathons')
+              .doc(selectedHackathon.id)
+              .collection('judgingResults')
+              .orderBy('averageScore', descending: true)
+              .snapshots(),
+          builder: (context, resultsSnapshot) {
+            if (resultsSnapshot.connectionState == ConnectionState.waiting &&
+                !resultsSnapshot.hasData) {
+              return const ParticipantPageScaffold(
+                title: 'Leaderboard',
+                subtitle: 'Rankings and team stats are loading in real-time.',
+                icon: Icons.leaderboard_rounded,
+                trailing: ParticipantInfoChip(
+                  label: 'Loading',
+                  color: Colors.white,
+                ),
+                children: [
+                  ParticipantCard(
+                    child: SizedBox(
+                      height: 200,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: ParticipantPalette.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            final results = resultsSnapshot.data?.docs ?? [];
+            final isAnonymous = widget.isJudgeView && selectedHackathon.anonymousJudging;
+            final registeredTeamsSorted = List<String>.from(selectedHackathon.registeredTeams)..sort();
+
+            return ParticipantPageScaffold(
+              title: 'Leaderboard',
+              subtitle: 'Dynamic standings and rankings calculated from submitted scores.',
+              icon: Icons.leaderboard_rounded,
+              trailing: ParticipantInfoChip(
+                label: selectedHackathon.title,
+                color: Colors.white,
+              ),
+              children: [
+                // Hackathon Selector Dropdown
+                ParticipantCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const ParticipantSectionHeader(
+                        title: 'Select Hackathon',
+                        subtitle: 'Choose an active event to review realtime standings.',
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: selectedHackathon.id,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: const Color(0xFFF8FAFC),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        items: hackathons.map((h) {
+                          return DropdownMenuItem<String>(
+                            value: h.id,
+                            child: Text(h.title),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          setState(() {
+                            _selectedHackathonId = val;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                if (results.isEmpty)
+                  const _LeaderboardStateCard(
+                    title: 'No scores submitted yet',
+                    subtitle: 'Standings will update in real-time as soon as judges submit evaluations for this event.',
+                    icon: Icons.rule_folder_outlined,
+                  )
+                else ...[
+                  // Dynamic Podium (top 3)
+                  _TopThreePodiumCard(
+                    results: results,
+                    isAnonymous: isAnonymous,
+                    registeredTeamsSorted: registeredTeamsSorted,
+                  ),
+
+                  // Full standings list
+                  _RankingListCard(
+                    results: results,
+                    isAnonymous: isAnonymous,
+                    registeredTeamsSorted: registeredTeamsSorted,
+                  ),
+                ],
+
+                // Static info / guidelines
+                const _JudgingFocusCard(),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }
 
-class _TopThreeCard extends StatelessWidget {
-  const _TopThreeCard();
+class _TopThreePodiumCard extends StatelessWidget {
+  const _TopThreePodiumCard({
+    required this.results,
+    required this.isAnonymous,
+    required this.registeredTeamsSorted,
+  });
+
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> results;
+  final bool isAnonymous;
+  final List<String> registeredTeamsSorted;
 
   @override
   Widget build(BuildContext context) {
+    // Extract podium details
+    final team1 = results.isNotEmpty ? results[0].data() : null;
+    final team2 = results.length > 1 ? results[1].data() : null;
+    final team3 = results.length > 2 ? results[2].data() : null;
+
+    final id1 = team1?['teamId']?.toString() ?? '';
+    final id2 = team2?['teamId']?.toString() ?? '';
+    final id3 = team3?['teamId']?.toString() ?? '';
+
+    String name1 = team1?['teamName']?.toString() ?? 'TBD';
+    String name2 = team2?['teamName']?.toString() ?? 'TBD';
+    String name3 = team3?['teamName']?.toString() ?? 'TBD';
+
+    if (isAnonymous) {
+      if (id1.isNotEmpty) {
+        final idx = registeredTeamsSorted.indexOf(id1);
+        name1 = 'Team #${idx != -1 ? idx + 1 : 1}';
+      }
+      if (id2.isNotEmpty) {
+        final idx = registeredTeamsSorted.indexOf(id2);
+        name2 = 'Team #${idx != -1 ? idx + 1 : 1}';
+      }
+      if (id3.isNotEmpty) {
+        final idx = registeredTeamsSorted.indexOf(id3);
+        name3 = 'Team #${idx != -1 ? idx + 1 : 1}';
+      }
+    }
+
+    final score1 = (team1?['averageScore'] as num?)?.toDouble() ?? 0;
+    final score2 = (team2?['averageScore'] as num?)?.toDouble() ?? 0;
+    final score3 = (team3?['averageScore'] as num?)?.toDouble() ?? 0;
+
     return ParticipantCard(
       child: Column(
         children: [
           const ParticipantSectionHeader(
             title: 'Podium Snapshot',
-            subtitle: 'A bold visual section that mirrors the event energy.',
+            subtitle: 'Top 3 highest evaluated teams in this event.',
           ),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
-            children: const [
+            children: [
               Expanded(
                 child: _PodiumTile(
                   rank: '2',
-                  team: 'Team Nova',
-                  score: '88',
+                  team: name2,
+                  score: _formatScore(score2),
                   height: 118,
                   color: ParticipantPalette.secondary,
                 ),
               ),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Expanded(
                 child: _PodiumTile(
                   rank: '1',
-                  team: 'ByteForce',
-                  score: '91',
+                  team: name1,
+                  score: _formatScore(score1),
                   height: 150,
                   color: ParticipantPalette.primary,
                 ),
               ),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Expanded(
                 child: _PodiumTile(
                   rank: '3',
-                  team: 'Pixel Pulse',
-                  score: '84',
+                  team: name3,
+                  score: _formatScore(score3),
                   height: 98,
                   color: ParticipantPalette.tertiary,
                 ),
@@ -98,6 +304,8 @@ class _PodiumTile extends StatelessWidget {
         Text(
           team,
           textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: ParticipantPalette.textPrimary,
             fontWeight: FontWeight.w700,
@@ -142,21 +350,49 @@ class _PodiumTile extends StatelessWidget {
 }
 
 class _RankingListCard extends StatelessWidget {
-  const _RankingListCard();
+  const _RankingListCard({
+    required this.results,
+    required this.isAnonymous,
+    required this.registeredTeamsSorted,
+  });
+
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> results;
+  final bool isAnonymous;
+  final List<String> registeredTeamsSorted;
 
   @override
   Widget build(BuildContext context) {
-    return const ParticipantCard(
+    // Show rankings
+    final listItems = results.asMap().entries.map((entry) {
+      final index = entry.key + 1;
+      final data = entry.value.data();
+      final teamId = data['teamId']?.toString() ?? '';
+      String teamName = data['teamName']?.toString() ?? 'Team';
+
+      if (isAnonymous && teamId.isNotEmpty) {
+        final idx = registeredTeamsSorted.indexOf(teamId);
+        teamName = 'Team #${idx != -1 ? idx + 1 : 1}';
+      }
+
+      final score = (data['averageScore'] as num?)?.toDouble() ?? 0;
+      final judges = (data['totalJudges'] as num?)?.toInt() ?? 0;
+
+      return _BoardRow(
+        rank: index,
+        team: teamName,
+        score: score,
+        judges: judges,
+      );
+    }).toList();
+
+    return ParticipantCard(
       child: Column(
         children: [
-          ParticipantSectionHeader(
-            title: 'Full Ranking',
-            subtitle: 'Static rows that can later be replaced with live scoreboard data.',
+          const ParticipantSectionHeader(
+            title: 'Full Standings',
+            subtitle: 'Real-time aggregated results calculated from all completed judge score cards.',
           ),
-          _BoardRow(rank: 4, team: 'Syntax Squad', score: 81, trendUp: true),
-          _BoardRow(rank: 5, team: 'Cloud Crafters', score: 79, trendUp: false),
-          _BoardRow(rank: 6, team: 'Merge Masters', score: 76, trendUp: true),
-          _BoardRow(rank: 7, team: 'Prompt Pirates', score: 74, trendUp: true),
+          ...listItems,
         ],
       ),
     );
@@ -168,13 +404,13 @@ class _BoardRow extends StatelessWidget {
     required this.rank,
     required this.team,
     required this.score,
-    required this.trendUp,
+    required this.judges,
   });
 
   final int rank;
   final String team;
-  final int score;
-  final bool trendUp;
+  final double score;
+  final int judges;
 
   @override
   Widget build(BuildContext context) {
@@ -200,27 +436,33 @@ class _BoardRow extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              team,
-              style: const TextStyle(
-                color: ParticipantPalette.textPrimary,
-                fontWeight: FontWeight.w600,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  team,
+                  style: const TextStyle(
+                    color: ParticipantPalette.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$judges evaluation${judges == 1 ? "" : "s"} submitted',
+                  style: const TextStyle(
+                    color: ParticipantPalette.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
             ),
           ),
-          Icon(
-            trendUp ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
-            size: 18,
-            color: trendUp
-                ? ParticipantPalette.success
-                : ParticipantPalette.danger,
-          ),
-          const SizedBox(width: 8),
           Text(
-            '$score pts',
+            '${_formatScore(score)} pts',
             style: const TextStyle(
-              color: ParticipantPalette.textSecondary,
-              fontWeight: FontWeight.w700,
+              color: ParticipantPalette.primary,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
@@ -229,8 +471,8 @@ class _BoardRow extends StatelessWidget {
   }
 }
 
-class _JudgingBreakdownCard extends StatelessWidget {
-  const _JudgingBreakdownCard();
+class _JudgingFocusCard extends StatelessWidget {
+  const _JudgingFocusCard();
 
   @override
   Widget build(BuildContext context) {
@@ -239,20 +481,20 @@ class _JudgingBreakdownCard extends StatelessWidget {
         children: [
           ParticipantSectionHeader(
             title: 'Judging Focus',
-            subtitle: 'A ready-made section for score categories and guidance.',
+            subtitle: 'Scores are computed using specific weighted metrics to ensure objective review.',
           ),
           ParticipantBulletRow(
-            text: 'Innovation: Show what feels genuinely new or meaningfully improved.',
+            text: 'Innovation: Originality, problem definition, and breakthrough creativity.',
             icon: Icons.auto_awesome_rounded,
             color: ParticipantPalette.secondary,
           ),
           ParticipantBulletRow(
-            text: 'Execution: Keep the demo stable, focused, and easy to understand.',
+            text: 'Execution: Technical design, prototype performance, stability, and demo.',
             icon: Icons.build_circle_rounded,
             color: ParticipantPalette.primary,
           ),
           ParticipantBulletRow(
-            text: 'Impact: Make the user problem and real-world value impossible to miss.',
+            text: 'Impact: Usability, potential scaling, and market relevance.',
             icon: Icons.favorite_rounded,
             color: ParticipantPalette.danger,
           ),
@@ -260,4 +502,53 @@ class _JudgingBreakdownCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _LeaderboardStateCard extends StatelessWidget {
+  const _LeaderboardStateCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return ParticipantCard(
+      child: Column(
+        children: [
+          Icon(icon, color: ParticipantPalette.primary, size: 40),
+          const SizedBox(height: 14),
+          Text(
+            title,
+            style: const TextStyle(
+              color: ParticipantPalette.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: ParticipantPalette.textSecondary,
+              fontSize: 13,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatScore(double value) {
+  if (value == value.roundToDouble()) {
+    return value.toInt().toString();
+  }
+  return value.toStringAsFixed(1);
 }

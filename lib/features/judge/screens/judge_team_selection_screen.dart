@@ -33,33 +33,61 @@ class JudgeTeamSelectionScreen extends StatelessWidget {
         .collection('hackathons')
         .doc(hackathonId);
 
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream:
-          hackathonRef
-              .collection('judgeAssignments')
-              .where('judgeUid', isEqualTo: judgeUid)
-              .snapshots(),
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: hackathonRef.snapshots(),
       builder: (context, assignmentSnapshot) {
-        final assignmentDocs =
-            assignmentSnapshot.data?.docs ??
-            const <QueryDocumentSnapshot<Map<String, dynamic>>>[];
-        final assignmentByTeamId = <String, _JudgeTeamAssignment>{};
-        for (final doc in assignmentDocs) {
-          final data = doc.data();
-          final teamId = (data['teamId'] ?? '').toString().trim();
+        final hackathonData =
+            assignmentSnapshot.data?.data() ??
+            const <String, dynamic>{};
+
+        final rawAssignmentsObj = hackathonData['judgeAssignments'];
+        final rawAssignments = <Map<String, dynamic>>[];
+        if (rawAssignmentsObj is List) {
+          for (final item in rawAssignmentsObj) {
+            if (item is Map) {
+              rawAssignments.add(Map<String, dynamic>.from(item));
+            }
+          }
+        } else if (rawAssignmentsObj is Map) {
+          for (final value in rawAssignmentsObj.values) {
+            if (value is Map) {
+              rawAssignments.add(Map<String, dynamic>.from(value));
+            }
+          }
+        }
+
+        final assignmentByTeamId =
+            <String, _JudgeTeamAssignment>{};
+
+        for (final assignment in rawAssignments) {
+          if (assignment['judgeId'] != judgeUid) {
+            continue;
+          }
+
+          final teamId =
+              (assignment['teamId'] ?? '')
+                  .toString()
+                  .trim();
+
           if (teamId.isEmpty) {
             continue;
           }
-          assignmentByTeamId[teamId] = _JudgeTeamAssignment(
-            teamId: teamId,
-            assignedAt: data['assignedAt'] as Timestamp?,
-          );
+
+          assignmentByTeamId[teamId] =
+              _JudgeTeamAssignment(
+                teamId: teamId,
+                teamName: assignment['teamName']?.toString(),
+                assignedAt: assignment['assignedAt'] as Timestamp?,
+              );
         }
+        final isAnonymous = hackathonData['anonymousJudging'] == true ||
+            (hackathonData['judgingRules'] != null && hackathonData['judgingRules']['anonymousJudging'] == true);
+
         final assignments = assignmentByTeamId.values.toList()
           ..sort((a, b) => a.teamId.compareTo(b.teamId));
 
         return FutureBuilder<List<_AssignedTeamItem>>(
-          future: _loadAssignedTeams(assignments),
+          future: _loadAssignedTeams(assignments, isAnonymous),
           builder: (context, teamsSnapshot) {
             final teams = teamsSnapshot.data ?? <_AssignedTeamItem>[];
 
@@ -130,12 +158,22 @@ class JudgeTeamSelectionScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  ...teams.map(
-                    (team) => _AssignedTeamCard(
-                      hackathonId: hackathonId,
-                      judgeUid: judgeUid,
-                      team: team,
-                    ),
+                  ...teams.asMap().entries.map(
+                    (entry) {
+                      final index = entry.key;
+                      final teamItem = entry.value;
+                      final displayName = isAnonymous ? 'Team #${index + 1}' : teamItem.team.name;
+                      final displayDescription = isAnonymous ? 'Anonymous Team' : teamItem.team.description;
+
+                      return _AssignedTeamCard(
+                        hackathonId: hackathonId,
+                        judgeUid: judgeUid,
+                        team: teamItem,
+                        isAnonymous: isAnonymous,
+                        displayName: displayName,
+                        displayDescription: displayDescription,
+                      );
+                    },
                   ),
                 ],
               ],
@@ -149,6 +187,7 @@ class JudgeTeamSelectionScreen extends StatelessWidget {
 
 Future<List<_AssignedTeamItem>> _loadAssignedTeams(
   List<_JudgeTeamAssignment> assignments,
+  bool isAnonymous,
 ) async {
   if (assignments.isEmpty) {
     return const <_AssignedTeamItem>[];
@@ -173,7 +212,9 @@ Future<List<_AssignedTeamItem>> _loadAssignedTeams(
         _AssignedTeamItem(
           team: SubmissionTeamSummary.fromMap(
             assignment.teamId,
-            const <String, dynamic>{},
+            {
+              'name': assignment.teamName ?? assignment.teamId,
+            },
           ),
           assignedTeamId: assignment.teamId,
           assignedAt: assignment.assignedAt,
@@ -182,7 +223,11 @@ Future<List<_AssignedTeamItem>> _loadAssignedTeams(
     }
   }
 
-  teams.sort((a, b) => a.team.name.compareTo(b.team.name));
+  if (isAnonymous) {
+    teams.sort((a, b) => a.assignedTeamId.compareTo(b.assignedTeamId));
+  } else {
+    teams.sort((a, b) => a.team.name.compareTo(b.team.name));
+  }
   return teams;
 }
 
@@ -191,11 +236,17 @@ class _AssignedTeamCard extends StatelessWidget {
     required this.hackathonId,
     required this.judgeUid,
     required this.team,
+    required this.isAnonymous,
+    required this.displayName,
+    required this.displayDescription,
   });
 
   final String hackathonId;
   final String judgeUid;
   final _AssignedTeamItem team;
+  final bool isAnonymous;
+  final String displayName;
+  final String displayDescription;
 
   @override
   Widget build(BuildContext context) {
@@ -234,7 +285,7 @@ class _AssignedTeamCard extends StatelessWidget {
                 '/app/judge/team/${Uri.encodeComponent(team.assignedTeamId)}/score',
                 arguments: {
                   'hackathonId': hackathonId,
-                  'teamName': team.team.name,
+                  'teamName': displayName,
                 },
               );
             },
@@ -262,7 +313,7 @@ class _AssignedTeamCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          team.team.name,
+                          displayName,
                           style: const TextStyle(
                             color: ParticipantPalette.textPrimary,
                             fontSize: 17,
@@ -271,9 +322,9 @@ class _AssignedTeamCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          team.team.description.isEmpty
-                              ? 'Team ID: ${team.assignedTeamId}'
-                              : team.team.description,
+                          displayDescription.isEmpty
+                              ? (isAnonymous ? 'Anonymous Team' : 'Team ID: ${team.assignedTeamId}')
+                              : displayDescription,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -314,9 +365,14 @@ class _AssignedTeamCard extends StatelessWidget {
 }
 
 class _JudgeTeamAssignment {
-  const _JudgeTeamAssignment({required this.teamId, required this.assignedAt});
+  const _JudgeTeamAssignment({
+    required this.teamId,
+    required this.assignedAt,
+    this.teamName,
+  });
 
   final String teamId;
+  final String? teamName;
   final Timestamp? assignedAt;
 }
 

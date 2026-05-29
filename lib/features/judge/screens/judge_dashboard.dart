@@ -31,11 +31,12 @@ class _JudgeDashboardState extends State<JudgeDashboard> {
 
   final List<Widget> _pages = [
     const JudgeAssignedHackathonsScreen(),
-    const BoardScreen(),
+    const BoardScreen(isJudgeView: true),
     const TeamScreen.viewer(
       title: 'Assigned Teams',
       subtitle:
           'Review registered teams, members, and joined hackathons while judging.',
+      isJudgeView: true,
     ),
     const ProfileScreen(),
   ];
@@ -362,60 +363,68 @@ Stream<List<_JudgeHackathonAssignment>> _assignedHackathonsStream(
   String judgeUid,
 ) {
   return FirebaseFirestore.instance
-      .collectionGroup('judgeAssignments')
-      .where('judgeUid', isEqualTo: judgeUid)
+      .collection('hackathons')
       .snapshots()
       .asyncMap((snapshot) async {
-        final teamIdsByHackathon = <String, Set<String>>{};
-        final hackathonRefs =
-            <String, DocumentReference<Map<String, dynamic>>>{};
-
-        for (final doc in snapshot.docs) {
-          final hackathonRef = doc.reference.parent.parent;
-          if (hackathonRef == null) {
-            continue;
-          }
-
-          final teamId = (doc.data()['teamId'] ?? '').toString().trim();
-          if (teamId.isEmpty) {
-            continue;
-          }
-
-          teamIdsByHackathon
-              .putIfAbsent(hackathonRef.id, () => <String>{})
-              .add(teamId);
-          hackathonRefs[hackathonRef.id] = hackathonRef;
-        }
-
         final assignments = <_JudgeHackathonAssignment>[];
-        for (final entry in teamIdsByHackathon.entries) {
-          final hackathonRef = hackathonRefs[entry.key];
-          if (hackathonRef == null) {
+
+        for (final hackathonDoc in snapshot.docs) {
+          final data = hackathonDoc.data();
+
+          final rawAssignmentsObj = data['judgeAssignments'];
+          final judgeAssignments = <Map<String, dynamic>>[];
+          if (rawAssignmentsObj is List) {
+            for (final item in rawAssignmentsObj) {
+              if (item is Map) {
+                judgeAssignments.add(Map<String, dynamic>.from(item));
+              }
+            }
+          } else if (rawAssignmentsObj is Map) {
+            for (final value in rawAssignmentsObj.values) {
+              if (value is Map) {
+                judgeAssignments.add(Map<String, dynamic>.from(value));
+              }
+            }
+          }
+
+          final assignedTeams = judgeAssignments
+              .where((assignment) =>
+                  assignment['judgeId'] == judgeUid)
+              .map((assignment) =>
+                  assignment['teamId'].toString())
+              .toSet()
+              .toList();
+
+          if (assignedTeams.isEmpty) {
             continue;
           }
 
-          final hackathonDoc = await hackathonRef.get();
-          if (!hackathonDoc.exists) {
-            continue;
-          }
+          int criteriaCount = 0;
 
-          final criteriaSnapshot =
-              await hackathonRef
-                  .collection('criteria')
-                  .where('active', isEqualTo: true)
-                  .get();
+          try {
+            final criteriaSnapshot = await hackathonDoc.reference
+                .collection('criteria')
+                .where('active', isEqualTo: true)
+                .get();
+
+            criteriaCount = criteriaSnapshot.size;
+          } catch (_) {}
 
           assignments.add(
             _JudgeHackathonAssignment(
-              hackathon: HackathonSummary.fromDocument(hackathonDoc),
-              assignedTeamIds: entry.value.toList()..sort(),
-              criteriaCount: criteriaSnapshot.size,
+              hackathon:
+                  HackathonSummary.fromDocument(hackathonDoc),
+              assignedTeamIds: assignedTeams,
+              criteriaCount: criteriaCount,
             ),
           );
         }
 
         assignments.sort(
-          (a, b) => a.hackathon.title.compareTo(b.hackathon.title),
+          (a, b) =>
+              a.hackathon.title.compareTo(
+                b.hackathon.title,
+              ),
         );
 
         return assignments;
