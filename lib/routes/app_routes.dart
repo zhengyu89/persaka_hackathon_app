@@ -11,6 +11,8 @@ import '../features/judge/screens/judge_rubric_screen.dart';
 import '../features/judge/screens/judge_score_screen.dart';
 import '../features/judge/screens/judge_team_selection_screen.dart';
 import '../features/participant/screens/participant_dashboard.dart';
+import '../features/schedule/screens/schedule_screen.dart';
+import '../features/schedule/screens/manage_schedule_screen.dart';
 
 class AppRoutes {
   static const login = '/login';
@@ -21,9 +23,12 @@ class AppRoutes {
   static const admin = '/admin';
   static const judge = '/judge';
   static const participant = '/participant';
+  static const schedule = '/schedule';
+  static const manageSchedule = '/manage-schedule';
   static const adminHackathonSettingsPrefix = '/app/admin/hackathon/';
   static const judgeHackathonPrefix = '/app/judge/hackathon/';
   static const judgeTeamPrefix = '/app/judge/team/';
+
   static final Map<String, WidgetBuilder> routes = {
     login: (_) => const LoginScreen(),
     register: (_) => const RegisterScreen(),
@@ -33,6 +38,8 @@ class AppRoutes {
     admin: (_) => const AdminDashboard(),
     judge: (_) => const JudgeDashboard(),
     participant: (_) => const ParticipantDashboard(),
+    schedule: (_) => const ScheduleScreen(),
+    manageSchedule: (_) => const ManageScheduleScreen(),
   };
 
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {

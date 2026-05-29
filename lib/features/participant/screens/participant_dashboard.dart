@@ -4,7 +4,7 @@ import '../../home/screens/home_screen.dart';
 import '../../submit/screens/submit_screen.dart';
 import '../../team/screens/team_screen.dart';
 import '../../profile/screens/profile_screen.dart';
-import '../../../shared/widgets/global_bottom_nav_bar.dart';
+import '../../schedule/screens/schedule_screen.dart';
 
 class ParticipantDashboard extends StatefulWidget {
   const ParticipantDashboard({super.key});
@@ -16,32 +16,10 @@ class ParticipantDashboard extends StatefulWidget {
 class _ParticipantDashboardState extends State<ParticipantDashboard> {
   int _currentIndex = 0;
 
-  static const List<GlobalBottomNavItem> _navItems = [
-    GlobalBottomNavItem(
-      icon: Icons.home,
-      label: 'Home',
-    ),
-    GlobalBottomNavItem(
-      icon: Icons.group,
-      label: 'Team',
-    ),
-    GlobalBottomNavItem(
-      icon: Icons.upload,
-      label: 'Submit',
-    ),
-    GlobalBottomNavItem(
-      icon: Icons.leaderboard,
-      label: 'Board',
-    ),
-    GlobalBottomNavItem(
-      icon: Icons.person,
-      label: 'Profile',
-    ),
-  ];
-
   final List<Widget> _pages = [
     const HomeScreen(),
     const TeamScreen(),
+    const ScheduleScreen(),
     const SubmitScreen(),
     const BoardScreen(),
     const ProfileScreen(),
@@ -60,10 +38,21 @@ class _ParticipantDashboardState extends State<ParticipantDashboard> {
         index: _currentIndex,
         children: _pages,
       ),
-      bottomNavigationBar: GlobalBottomNavBar(
-        items: _navItems,
+      bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: _onTap,
+        selectedItemColor: const Color(0xFF4F39F6),
+        unselectedItemColor: const Color(0xFF6B7280),
+        backgroundColor: Colors.white,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.group), label: "Team"),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: "Schedule"),
+          BottomNavigationBarItem(icon: Icon(Icons.upload), label: "Submit"),
+          BottomNavigationBarItem(icon: Icon(Icons.leaderboard), label: "Board"),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+        ],
       ),
     );
   }
