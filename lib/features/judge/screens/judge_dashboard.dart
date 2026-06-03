@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +7,7 @@ import '../../../shared/widgets/hackathon_cover.dart';
 import '../../../shared/widgets/participant_ui.dart';
 import '../../board/screens/board_screen.dart';
 import '../../profile/screens/profile_screen.dart';
+import '../../schedule/screens/schedule_screen.dart';
 import '../../submit/models/submission_models.dart';
 import '../../team/screens/team_screen.dart';
 
@@ -24,6 +23,7 @@ class _JudgeDashboardState extends State<JudgeDashboard> {
 
   static const List<GlobalBottomNavItem> _navItems = [
     GlobalBottomNavItem(icon: Icons.fact_check_rounded, label: 'Judge'),
+    GlobalBottomNavItem(icon: Icons.calendar_today, label: 'Schedule'),
     GlobalBottomNavItem(icon: Icons.leaderboard, label: 'Board'),
     GlobalBottomNavItem(icon: Icons.group, label: 'Teams'),
     GlobalBottomNavItem(icon: Icons.person, label: 'Profile'),
@@ -31,6 +31,7 @@ class _JudgeDashboardState extends State<JudgeDashboard> {
 
   final List<Widget> _pages = [
     const JudgeAssignedHackathonsScreen(),
+    const ScheduleScreen(),
     const BoardScreen(isJudgeView: true),
     const TeamScreen.viewer(
       title: 'Assigned Teams',
@@ -192,7 +193,7 @@ class _JudgeHackathonCard extends StatelessWidget {
                 backgroundColor: const Color(0xFFEEF2FF),
               ),
               _JudgeChip(
-                label: rubricReady ? '✓ Rubric Ready' : 'No rubric configured',
+                label: rubricReady ? 'Rubric Ready' : 'No rubric configured',
                 color:
                     rubricReady
                         ? ParticipantPalette.success
@@ -387,13 +388,12 @@ Stream<List<_JudgeHackathonAssignment>> _assignedHackathonsStream(
             }
           }
 
-          final assignedTeams = judgeAssignments
-              .where((assignment) =>
-                  assignment['judgeId'] == judgeUid)
-              .map((assignment) =>
-                  assignment['teamId'].toString())
-              .toSet()
-              .toList();
+          final assignedTeams =
+              judgeAssignments
+                  .where((assignment) => assignment['judgeId'] == judgeUid)
+                  .map((assignment) => assignment['teamId'].toString())
+                  .toSet()
+                  .toList();
 
           if (assignedTeams.isEmpty) {
             continue;
@@ -402,18 +402,18 @@ Stream<List<_JudgeHackathonAssignment>> _assignedHackathonsStream(
           int criteriaCount = 0;
 
           try {
-            final criteriaSnapshot = await hackathonDoc.reference
-                .collection('criteria')
-                .where('active', isEqualTo: true)
-                .get();
+            final criteriaSnapshot =
+                await hackathonDoc.reference
+                    .collection('criteria')
+                    .where('active', isEqualTo: true)
+                    .get();
 
             criteriaCount = criteriaSnapshot.size;
           } catch (_) {}
 
           assignments.add(
             _JudgeHackathonAssignment(
-              hackathon:
-                  HackathonSummary.fromDocument(hackathonDoc),
+              hackathon: HackathonSummary.fromDocument(hackathonDoc),
               assignedTeamIds: assignedTeams,
               criteriaCount: criteriaCount,
             ),
@@ -421,10 +421,7 @@ Stream<List<_JudgeHackathonAssignment>> _assignedHackathonsStream(
         }
 
         assignments.sort(
-          (a, b) =>
-              a.hackathon.title.compareTo(
-                b.hackathon.title,
-              ),
+          (a, b) => a.hackathon.title.compareTo(b.hackathon.title),
         );
 
         return assignments;

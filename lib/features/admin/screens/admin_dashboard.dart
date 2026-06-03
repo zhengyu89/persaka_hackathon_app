@@ -8,6 +8,7 @@ import '../../submit/screens/submissions_review_screen.dart';
 import '../../team/screens/team_screen.dart';
 import '../../admin/screens/admin_manage_judges_screen.dart';
 import '../../admin/screens/admin_manage_hackathons_screen.dart';
+import '../../schedule/screens/manage_schedule_screen.dart';
 import '../../../shared/widgets/global_bottom_nav_bar.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -434,7 +435,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const AdminManageHackathonsScreen(),
+                              builder: (_) => const ManageScheduleScreen(),
                             ),
                           );
                         },
