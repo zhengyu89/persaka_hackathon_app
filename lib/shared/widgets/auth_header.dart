@@ -18,7 +18,7 @@ class AuthHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox( // ✅ FIX: force full width
+    return SizedBox(
       width: double.infinity,
       child: Container(
         padding: const EdgeInsets.fromLTRB(24, 60, 24, 40),
@@ -37,13 +37,17 @@ class AuthHeader extends StatelessWidget {
         child: Column(
           children: [
             if (showBack)
-              GestureDetector(
-                onTap: onBackTap ?? () => Navigator.pop(context),
-                child: const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Back to Login',
-                    style: TextStyle(color: Colors.white70),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: GestureDetector(
+                  onTap: onBackTap ?? () => Navigator.pop(context),
+                  behavior: HitTestBehavior.opaque,
+                  child: const Padding(
+                    padding: EdgeInsets.only(top: 8, bottom: 8, right: 16),
+                    child: Text(
+                      'Back to Login',
+                      style: TextStyle(color: Colors.white70),
+                    ),
                   ),
                 ),
               ),

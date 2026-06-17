@@ -45,7 +45,11 @@ class _ParticipantDashboardState extends State<ParticipantDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _pages),
+      body: IndexedStack(
+        sizing: StackFit.expand,
+        index: _currentIndex,
+        children: _pages,
+      ),
       bottomNavigationBar: GlobalBottomNavBar(
         items: _navItems,
         currentIndex: _currentIndex,

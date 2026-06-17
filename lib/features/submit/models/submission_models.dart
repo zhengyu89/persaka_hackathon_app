@@ -56,6 +56,8 @@ class HackathonSummary {
     this.judgeAssignments = const <String, dynamic>{},
     this.submissionDeadline,
     this.anonymousJudging = false,
+    this.leaderboardStatus = 'Draft',
+    this.leaderboardPublishedAt,
   });
 
   final String id;
@@ -75,6 +77,8 @@ class HackathonSummary {
   final Map<String, dynamic> judgeAssignments;
   final Timestamp? submissionDeadline;
   final bool anonymousJudging;
+  final String leaderboardStatus;
+  final Timestamp? leaderboardPublishedAt;
 
   factory HackathonSummary.fromMap(String id, Map<String, dynamic> data) {
     Timestamp? deadlineTs;
@@ -125,6 +129,8 @@ class HackathonSummary {
       judgeAssignments: _normalizeJudgeAssignments(data['judgeAssignments']),
       submissionDeadline: deadlineTs,
       anonymousJudging: anonJudging,
+      leaderboardStatus: (data['leaderboardStatus'] ?? 'Draft').toString(),
+      leaderboardPublishedAt: data['leaderboardPublishedAt'] as Timestamp?,
     );
   }
 

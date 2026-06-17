@@ -140,9 +140,11 @@ class _AdminAddJudgesScreenState extends State<AdminAddJudgesScreen> {
                             onTap: () {
                               Navigator.pop(context);
                             },
+                            behavior: HitTestBehavior.opaque,
 
                             child: Container(
-                              padding: const EdgeInsets.all(8),
+                              width: 44,
+                              height: 44,
 
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.12),

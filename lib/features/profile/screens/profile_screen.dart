@@ -234,7 +234,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         GestureDetector(
                           onTap: () => setState(() => _isEditing = !_isEditing),
+                          behavior: HitTestBehavior.opaque,
                           child: Container(
+                            constraints: const BoxConstraints(minHeight: 44),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14,
                               vertical: 8,
@@ -269,53 +271,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // Avatar
                     GestureDetector(
                       onTap: _isEditing ? _pickImage : null,
-                      child: Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: 46,
-                            backgroundColor: Colors.white.withOpacity(0.22),
-                            backgroundImage:
-                                _pickedImage != null
-                                    ? FileImage(_pickedImage!)
-                                    : (_photoURL != null
-                                        ? NetworkImage(_photoURL!)
-                                            as ImageProvider
-                                        : null),
-                            child:
-                                _pickedImage == null && _photoURL == null
-                                    ? Text(
-                                      _initials,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    )
-                                    : null,
-                          ),
-                          if (_isEditing)
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
+                      behavior: HitTestBehavior.opaque,
+                      child: SizedBox(
+                        width: 92,
+                        height: 92,
+                        child: Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 46,
+                              backgroundColor: Colors.white.withOpacity(0.22),
+                              backgroundImage:
+                                  _pickedImage != null
+                                      ? FileImage(_pickedImage!)
+                                      : (_photoURL != null
+                                          ? NetworkImage(_photoURL!)
+                                              as ImageProvider
+                                          : null),
+                              child:
+                                  _pickedImage == null && _photoURL == null
+                                      ? Text(
+                                        _initials,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      )
+                                      : null,
+                            ),
+                            if (_isEditing)
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: ParticipantPalette.primary,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt_rounded,
+                                    size: 15,
                                     color: ParticipantPalette.primary,
-                                    width: 2,
                                   ),
                                 ),
-                                child: const Icon(
-                                  Icons.camera_alt_rounded,
-                                  size: 15,
-                                  color: ParticipantPalette.primary,
-                                ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 14),

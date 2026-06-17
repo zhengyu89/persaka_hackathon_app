@@ -529,6 +529,7 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
                                       }
                                     });
                                   },
+                                  behavior: HitTestBehavior.opaque,
 
                                   child: Padding(
                                     padding: const EdgeInsets.all(18),

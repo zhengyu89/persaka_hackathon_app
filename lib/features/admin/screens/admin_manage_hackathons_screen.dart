@@ -959,6 +959,7 @@ class _HackathonAdminCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => _openSettings(context),
+      behavior: HitTestBehavior.opaque,
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
@@ -992,8 +993,9 @@ class _HackathonAdminCard extends StatelessWidget {
                     child: InkWell(
                       onTap: () => _showSettingsSheet(context),
                       borderRadius: BorderRadius.circular(14),
-                      child: const Padding(
-                        padding: EdgeInsets.all(10),
+                      child: const SizedBox(
+                        width: 44,
+                        height: 44,
                         child: Icon(
                           Icons.more_vert_rounded,
                           color: Color(0xFF4F39F6),
