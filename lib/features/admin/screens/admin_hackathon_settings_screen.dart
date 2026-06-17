@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../admin/widgets/final_results_summary_card.dart';
+import '../../board/services/final_results_service.dart';
 import '../../submit/models/submission_models.dart';
 
 class AdminHackathonSettingsScreen extends StatelessWidget {
@@ -77,6 +80,7 @@ class _SettingsFormState extends State<_SettingsForm> {
   bool _requireDemoVideo = false;
   bool _requireSlides = false;
   bool _isSaving = false;
+  bool _isPublishingFinalResults = false;
 
   @override
   void initState() {
@@ -107,8 +111,18 @@ class _SettingsFormState extends State<_SettingsForm> {
       return 'Not configured';
     }
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final day = dateTime.day;
     final month = months[dateTime.month - 1];
@@ -165,6 +179,110 @@ class _SettingsFormState extends State<_SettingsForm> {
     _submissionDeadlineController.text = _formatDeadline(_submissionDeadline);
   }
 
+  int get _minimumJudgesRequired {
+    final configuredValue =
+        widget.hackathon.judgingRules['minimumJudgesRequired'];
+    if (configuredValue is num) {
+      return configuredValue.toInt() > 0 ? configuredValue.toInt() : 1;
+    }
+    final parsedValue = int.tryParse((configuredValue ?? '').toString());
+    return parsedValue != null && parsedValue > 0 ? parsedValue : 1;
+  }
+
+  Future<void> _handleRevealFinalResults(
+    FinalResultsReadiness readiness,
+  ) async {
+    if (widget.hackathon.registeredTeams.isEmpty) {
+      _showMessage(
+        'Register at least one team before revealing final results.',
+        isError: true,
+      );
+      return;
+    }
+
+    final currentAdminEmail =
+        (FirebaseAuth.instance.currentUser?.email ?? '').trim();
+    if (currentAdminEmail.isEmpty) {
+      _showMessage('Sign in again to reveal final results.', isError: true);
+      return;
+    }
+
+    if (readiness.readyTeams < readiness.totalTeams) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Reveal with pending teams?'),
+            content: Text(
+              'Only ${readiness.readyTeams} of ${readiness.totalTeams} teams currently meet the minimum judge requirement. Revealing now will publish the snapshot with the remaining teams marked as pending and unranked.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF4F39F6),
+                ),
+                child: const Text('Reveal Anyway'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (confirmed != true) {
+        return;
+      }
+    }
+
+    setState(() {
+      _isPublishingFinalResults = true;
+    });
+
+    try {
+      final wasRevealed = widget.hackathon.finalResultsRevealed;
+      await publishFinalResultsSnapshot(
+        firestore: FirebaseFirestore.instance,
+        hackathonId: widget.hackathon.id,
+        registeredTeamIds: widget.hackathon.registeredTeams,
+        minimumJudgesRequired: _minimumJudgesRequired,
+        publishedBy: currentAdminEmail,
+      );
+
+      if (!mounted) {
+        return;
+      }
+      _showMessage(
+        wasRevealed
+            ? 'Final results republished successfully.'
+            : 'Final results revealed successfully.',
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      _showMessage('Could not publish final results: $error', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPublishingFinalResults = false;
+        });
+      }
+    }
+  }
+
+  void _showMessage(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? const Color(0xFFDC2626) : null,
+      ),
+    );
+  }
+
   Future<void> _saveSettings() async {
     setState(() {
       _isSaving = true;
@@ -203,13 +321,15 @@ class _SettingsFormState extends State<_SettingsForm> {
               'requireGithub': _requireGithub,
               'requireDemoVideo': _requireDemoVideo,
               'requireSlides': _requireSlides,
-              'submissionDeadline': _submissionDeadline == null
-                  ? null
-                  : Timestamp.fromDate(_submissionDeadline!),
+              'submissionDeadline':
+                  _submissionDeadline == null
+                      ? null
+                      : Timestamp.fromDate(_submissionDeadline!),
             },
-            'submissionDeadline': _submissionDeadline == null
-                ? null
-                : Timestamp.fromDate(_submissionDeadline!),
+            'submissionDeadline':
+                _submissionDeadline == null
+                    ? null
+                    : Timestamp.fromDate(_submissionDeadline!),
             'anonymousJudging': _anonymousJudging,
           }, SetOptions(merge: true));
 
@@ -338,7 +458,9 @@ class _SettingsFormState extends State<_SettingsForm> {
     }
 
     final activeWeightExcluding = criteriaSnapshot.docs
-        .where((doc) => doc.id != criterion?.id && doc.data()['active'] != false)
+        .where(
+          (doc) => doc.id != criterion?.id && doc.data()['active'] != false,
+        )
         .fold<double>(
           0,
           (total, doc) => total + _numberValue(doc.data()['weight']),
@@ -450,9 +572,9 @@ class _SettingsFormState extends State<_SettingsForm> {
                             .collection('hackathons')
                             .doc(widget.hackathon.id)
                             .update({
-                          'anonymousJudging': value,
-                          'judgingRules.anonymousJudging': value,
-                        });
+                              'anonymousJudging': value,
+                              'judgingRules.anonymousJudging': value,
+                            });
                       } catch (_) {}
                     },
                   ),
@@ -545,7 +667,8 @@ class _SettingsFormState extends State<_SettingsForm> {
                     .where((doc) => doc.data()['active'] != false)
                     .fold<double>(
                       0,
-                      (total, doc) => total + _numberValue(doc.data()['weight']),
+                      (total, doc) =>
+                          total + _numberValue(doc.data()['weight']),
                     );
                 if (criteria.isEmpty) {
                   return Column(
@@ -655,6 +778,77 @@ class _SettingsFormState extends State<_SettingsForm> {
                   ),
                 ),
               ],
+            ),
+          ),
+          _SettingsCard(
+            title: 'Final Results',
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream:
+                  FirebaseFirestore.instance
+                      .collection('hackathons')
+                      .doc(widget.hackathon.id)
+                      .collection('judgingResults')
+                      .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting &&
+                    !snapshot.hasData) {
+                  return const SizedBox(
+                    height: 88,
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                final liveResults =
+                    snapshot.data?.docs
+                        .map(
+                          (doc) =>
+                              LiveJudgingSummary.fromMap(doc.id, doc.data()),
+                        )
+                        .toList() ??
+                    const <LiveJudgingSummary>[];
+                final readiness = computeFinalResultsReadiness(
+                  registeredTeamIds: widget.hackathon.registeredTeams,
+                  liveResults: liveResults,
+                  minimumJudgesRequired: _minimumJudgesRequired,
+                );
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (snapshot.hasError) ...[
+                      const Text(
+                        'Readiness could not be loaded right now. You can still republish once Firestore reconnects.',
+                        style: TextStyle(
+                          color: Color(0xFF6B7280),
+                          fontSize: 12,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+                    FinalResultsSummaryCard(
+                      readyTeams: readiness.readyTeams,
+                      totalTeams: readiness.totalTeams,
+                      minimumJudgesRequired: _minimumJudgesRequired,
+                      isRevealed: widget.hackathon.finalResultsRevealed,
+                      isPublishing: _isPublishingFinalResults,
+                      publishedAtLabel: _formatDateTime(
+                        widget.hackathon.finalResultsPublishedAt?.toDate(),
+                      ),
+                      publishedBy:
+                          widget.hackathon.finalResultsPublishedBy
+                                  .trim()
+                                  .isEmpty
+                              ? null
+                              : widget.hackathon.finalResultsPublishedBy,
+                      onPublish:
+                          snapshot.hasError || _isSaving
+                              ? null
+                              : () => _handleRevealFinalResults(readiness),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           _ParticipatingTeamsSection(hackathon: widget.hackathon),
@@ -1071,7 +1265,10 @@ class _CriterionEditorSheetState extends State<_CriterionEditorSheet> {
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: const Color(0xFFDC2626)),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: const Color(0xFFDC2626),
+      ),
     );
   }
 
@@ -1115,17 +1312,17 @@ class _CriterionEditorSheetState extends State<_CriterionEditorSheet> {
               TextField(
                 controller: _weightController,
                 keyboardType: TextInputType.number,
-                decoration: _inputDecoration('Weight Percentage (%)').copyWith(
-                  helperText: 'Contribution to final score',
-                ),
+                decoration: _inputDecoration(
+                  'Weight Percentage (%)',
+                ).copyWith(helperText: 'Contribution to final score'),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _maxScoreController,
                 keyboardType: TextInputType.number,
-                decoration: _inputDecoration('Maximum Judge Score').copyWith(
-                  helperText: 'Highest score judge can assign',
-                ),
+                decoration: _inputDecoration(
+                  'Maximum Judge Score',
+                ).copyWith(helperText: 'Highest score judge can assign'),
               ),
               const SizedBox(height: 4),
               SwitchListTile(

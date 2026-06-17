@@ -468,6 +468,9 @@ class _AdminAddHackathonScreenState extends State<AdminAddHackathonScreen> {
         payload['judgeAssignments'] = <Map<String, dynamic>>[];
         payload['createdAt'] = FieldValue.serverTimestamp();
         payload['createdBy'] = FirebaseAuth.instance.currentUser?.email;
+        payload['finalResultsRevealed'] = false;
+        payload['finalResultsPublishedAt'] = null;
+        payload['finalResultsPublishedBy'] = '';
         payload['judgingRules'] = {
           'judgesPerTeam': 2,
           'scoreScale': 10,

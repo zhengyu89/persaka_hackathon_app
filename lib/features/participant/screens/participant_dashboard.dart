@@ -32,7 +32,7 @@ class _ParticipantDashboardState extends State<ParticipantDashboard> {
     const TeamScreen(),
     const ScheduleScreen(),
     const SubmitScreen(),
-    const BoardScreen(),
+    const BoardScreen(audience: BoardAudience.participant),
     const ProfileScreen(),
   ];
 

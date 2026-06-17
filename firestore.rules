@@ -34,6 +34,24 @@ service cloud.firestore {
         allow write: if isAdmin();
       }
 
+      match /judgingResults/{teamId} {
+        allow read: if isAdmin() || isJudge();
+        allow create, update: if isAdmin() || isJudge();
+        allow delete: if isAdmin();
+
+        match /judgeScores/{judgeUid} {
+          allow read: if isAdmin() || isJudge();
+          allow create, update: if isJudge()
+            && request.auth.uid == judgeUid;
+          allow delete: if isAdmin();
+        }
+      }
+
+      match /finalResults/{teamId} {
+        allow read: if signedIn();
+        allow write: if isAdmin();
+      }
+
       match /scores/{scoreId} {
         allow read: if isAdmin() || isJudge();
         allow create, update: if isJudge()
