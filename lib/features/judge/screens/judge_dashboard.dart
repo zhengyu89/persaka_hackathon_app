@@ -32,7 +32,7 @@ class _JudgeDashboardState extends State<JudgeDashboard> {
   final List<Widget> _pages = [
     const JudgeAssignedHackathonsScreen(),
     const ScheduleScreen(),
-    const BoardScreen(isJudgeView: true),
+    const BoardScreen(audience: BoardAudience.judge),
     const TeamScreen.viewer(
       title: 'Assigned Teams',
       subtitle:

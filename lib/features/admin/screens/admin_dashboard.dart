@@ -27,7 +27,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     const AdminDashboardScreen(),
     const TeamScreen.viewer(),
     const AdminManageHackathonsScreen(),
-    const BoardScreen(),
+    const BoardScreen(audience: BoardAudience.admin),
     const ProfileScreen(),
   ];
 
@@ -387,8 +387,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder:
-                                  (_) => const AdminAddHackathonScreen(),
+                              builder: (_) => const AdminAddHackathonScreen(),
                             ),
                           );
                         },
@@ -471,9 +470,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => const TeamScreen.viewer(
-                            title: "Registered Teams",
-                          ),
+                          builder:
+                              (_) => const TeamScreen.viewer(
+                                title: "Registered Teams",
+                              ),
                         ),
                       );
                     },

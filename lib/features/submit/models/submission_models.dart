@@ -56,6 +56,9 @@ class HackathonSummary {
     this.judgeAssignments = const <String, dynamic>{},
     this.submissionDeadline,
     this.anonymousJudging = false,
+    this.finalResultsRevealed = false,
+    this.finalResultsPublishedAt,
+    this.finalResultsPublishedBy = '',
     this.leaderboardStatus = 'Draft',
     this.leaderboardPublishedAt,
   });
@@ -77,6 +80,9 @@ class HackathonSummary {
   final Map<String, dynamic> judgeAssignments;
   final Timestamp? submissionDeadline;
   final bool anonymousJudging;
+  final bool finalResultsRevealed;
+  final Timestamp? finalResultsPublishedAt;
+  final String finalResultsPublishedBy;
   final String leaderboardStatus;
   final Timestamp? leaderboardPublishedAt;
 
@@ -86,9 +92,12 @@ class HackathonSummary {
       deadlineTs = data['submissionDeadline'] as Timestamp;
     } else if (data['submissionRequirements'] != null &&
         data['submissionRequirements']['submissionDeadline'] is Timestamp) {
-      deadlineTs = data['submissionRequirements']['submissionDeadline'] as Timestamp;
+      deadlineTs =
+          data['submissionRequirements']['submissionDeadline'] as Timestamp;
     } else {
-      final deadlineStr = data['submissionDeadline'] ?? data['submissionRequirements']?['submissionDeadline'];
+      final deadlineStr =
+          data['submissionDeadline'] ??
+          data['submissionRequirements']?['submissionDeadline'];
       if (deadlineStr != null) {
         final parsed = DateTime.tryParse(deadlineStr.toString());
         if (parsed != null) {
@@ -103,6 +112,32 @@ class HackathonSummary {
     } else if (data['judgingRules'] != null &&
         data['judgingRules']['anonymousJudging'] is bool) {
       anonJudging = data['judgingRules']['anonymousJudging'] as bool;
+    }
+
+    Timestamp? finalResultsPublishedAt;
+    if (data['finalResultsPublishedAt'] is Timestamp) {
+      finalResultsPublishedAt = data['finalResultsPublishedAt'] as Timestamp;
+    } else {
+      final publishedAt = data['finalResultsPublishedAt'];
+      if (publishedAt != null) {
+        final parsed = DateTime.tryParse(publishedAt.toString());
+        if (parsed != null) {
+          finalResultsPublishedAt = Timestamp.fromDate(parsed);
+        }
+      }
+    }
+
+    Timestamp? leaderboardPublishedAt;
+    if (data['leaderboardPublishedAt'] is Timestamp) {
+      leaderboardPublishedAt = data['leaderboardPublishedAt'] as Timestamp;
+    } else {
+      final publishedAt = data['leaderboardPublishedAt'];
+      if (publishedAt != null) {
+        final parsed = DateTime.tryParse(publishedAt.toString());
+        if (parsed != null) {
+          leaderboardPublishedAt = Timestamp.fromDate(parsed);
+        }
+      }
     }
 
     return HackathonSummary(
@@ -129,8 +164,12 @@ class HackathonSummary {
       judgeAssignments: _normalizeJudgeAssignments(data['judgeAssignments']),
       submissionDeadline: deadlineTs,
       anonymousJudging: anonJudging,
+      finalResultsRevealed: data['finalResultsRevealed'] == true,
+      finalResultsPublishedAt: finalResultsPublishedAt,
+      finalResultsPublishedBy:
+          (data['finalResultsPublishedBy'] ?? '').toString(),
       leaderboardStatus: (data['leaderboardStatus'] ?? 'Draft').toString(),
-      leaderboardPublishedAt: data['leaderboardPublishedAt'] as Timestamp?,
+      leaderboardPublishedAt: leaderboardPublishedAt,
     );
   }
 
