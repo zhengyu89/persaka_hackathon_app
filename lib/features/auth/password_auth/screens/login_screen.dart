@@ -208,6 +208,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       GestureDetector(
                         onTap: isLoading ? null : login,
+                        behavior: HitTestBehavior.opaque,
                         child: Container(
                           width: double.infinity,
                           height: 55,

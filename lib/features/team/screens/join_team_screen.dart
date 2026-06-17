@@ -207,9 +207,17 @@ class _JoinTeamScreenState
                   GestureDetector(
                     onTap: () =>
                         Navigator.pop(context),
-                    child: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      color: Colors.white,
+                    behavior: HitTestBehavior.opaque,
+                    child: const SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
 
@@ -341,6 +349,7 @@ class _JoinTeamScreenState
                   GestureDetector(
                     onTap:
                         isLoading ? null : joinTeam,
+                    behavior: HitTestBehavior.opaque,
                     child: Container(
                       width: double.infinity,
                       height: 58,

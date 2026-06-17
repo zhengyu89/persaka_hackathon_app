@@ -235,6 +235,7 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                   if (Navigator.canPop(context)) ...[
                     GestureDetector(
                       onTap: () => Navigator.maybePop(context),
+                      behavior: HitTestBehavior.opaque,
                       child: Container(
                         width: 48,
                         height: 48,
@@ -399,6 +400,7 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                         const SnackBar(content: Text("Judges list refreshed")),
                       );
                     },
+                    behavior: HitTestBehavior.opaque,
 
                     child: Container(
                       height: 56,
@@ -461,6 +463,7 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                         await loadJudges();
                       }
                     },
+                    behavior: HitTestBehavior.opaque,
 
                     child: Container(
                       height: 56,
@@ -527,6 +530,7 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                                 await loadJudges();
                               });
                             },
+                            behavior: HitTestBehavior.opaque,
 
                             child: Container(
                               margin: const EdgeInsets.only(bottom: 18),

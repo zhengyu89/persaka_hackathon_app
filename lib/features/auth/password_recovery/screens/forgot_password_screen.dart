@@ -109,6 +109,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget _buildPrimaryButton() {
     return GestureDetector(
       onTap: _isLoading ? null : _submit,
+      behavior: HitTestBehavior.opaque,
       child: Container(
         width: double.infinity,
         height: 55,

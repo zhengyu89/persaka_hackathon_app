@@ -343,6 +343,29 @@ class _LeaderboardPreviewCard extends StatelessWidget {
 
         final selectedHackathon = hackathons.first;
 
+        if (selectedHackathon.leaderboardStatus != 'Published') {
+          return const ParticipantCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ParticipantSectionHeader(
+                  title: 'Top Teams Snapshot',
+                  subtitle: 'Standings will appear once officially released.',
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(
+                    child: Text(
+                      'The organiser has not published the leaderboard yet.',
+                      style: TextStyle(color: ParticipantPalette.textSecondary),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: FirebaseFirestore.instance
               .collection('hackathons')

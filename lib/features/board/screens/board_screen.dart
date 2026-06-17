@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../../shared/widgets/participant_ui.dart';
 import '../../submit/models/submission_models.dart';
@@ -14,96 +15,409 @@ class BoardScreen extends StatefulWidget {
 
 class _BoardScreenState extends State<BoardScreen> {
   String? _selectedHackathonId;
+  bool _isPublishing = false;
+
+  String _formatTimestamp(Timestamp? timestamp) {
+    if (timestamp == null) return 'Never';
+    final dt = timestamp.toDate();
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final month = months[dt.month - 1];
+    final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
+    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+    final minute = dt.minute.toString().padLeft(2, '0');
+    return '$month ${dt.day}, ${dt.year} at $hour:$minute $ampm';
+  }
+
+  Future<void> _confirmPublishOrHide(
+    BuildContext context,
+    String hackathonId,
+    bool publish,
+    bool isUpdate,
+  ) async {
+    final title = publish
+        ? (isUpdate ? 'Update Published Standings?' : 'Publish Standings?')
+        : 'Hide Standings?';
+    final content = publish
+        ? (isUpdate
+            ? 'Are you sure you want to release the latest scores and rankings to participants?'
+            : 'Are you sure you want to release the current standings and rankings to all participants?')
+        : 'Are you sure you want to hide the leaderboard rankings from participants?';
+    final actionText = publish ? (isUpdate ? 'Update' : 'Publish') : 'Hide';
+    final actionColor = publish ? ParticipantPalette.success : ParticipantPalette.danger;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          content: Text(content),
+          actions: [
+            TextButton(
+              child: const Text('Cancel', style: TextStyle(color: ParticipantPalette.textSecondary)),
+              onPressed: () => Navigator.pop(context, false),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: actionColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(actionText),
+              onPressed: () => Navigator.pop(context, true),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) return;
+
+    setState(() {
+      _isPublishing = true;
+    });
+
+    try {
+      final payload = <String, dynamic>{
+        'leaderboardStatus': publish ? 'Published' : 'Hidden',
+        if (publish) 'leaderboardPublishedAt': FieldValue.serverTimestamp(),
+      };
+
+      await FirebaseFirestore.instance
+          .collection('hackathons')
+          .doc(hackathonId)
+          .set(payload, SetOptions(merge: true));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              publish
+                  ? (isUpdate ? 'Leaderboard updates published successfully.' : 'Leaderboard published successfully.')
+                  : 'Leaderboard standings hidden.',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update leaderboard status: $e'),
+            backgroundColor: ParticipantPalette.danger,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPublishing = false;
+        });
+      }
+    }
+  }
+
+  Widget _buildHackathonSelectorCard(List<HackathonSummary> hackathons, HackathonSummary selectedHackathon) {
+    return ParticipantCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const ParticipantSectionHeader(
+            title: 'Select Hackathon',
+            subtitle: 'Choose an active event to review realtime standings.',
+          ),
+          SizedBox(
+            width: double.infinity,
+            height: 60,
+            child: DropdownButtonFormField<String>(
+              value: selectedHackathon.id,
+              isExpanded: true,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              items: hackathons.map((h) {
+                return DropdownMenuItem<String>(
+                  value: h.id,
+                  child: Text(
+                    h.title,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList(),
+              onChanged: (val) {
+                setState(() {
+                  _selectedHackathonId = val;
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrganiserControls(BuildContext context, HackathonSummary hackathon) {
+    final status = hackathon.leaderboardStatus;
+    final publishedAt = hackathon.leaderboardPublishedAt;
+
+    Color statusColor;
+    switch (status) {
+      case 'Published':
+        statusColor = ParticipantPalette.success;
+        break;
+      case 'Hidden':
+        statusColor = ParticipantPalette.danger;
+        break;
+      default:
+        statusColor = ParticipantPalette.warning;
+    }
+
+    return ParticipantCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(
+                child: ParticipantSectionHeader(
+                  title: 'Organiser Control Panel',
+                  subtitle: 'Control standings visibility and release updates.',
+                ),
+              ),
+              const SizedBox(width: 12),
+              ParticipantInfoChip(
+                label: status.toUpperCase(),
+                color: statusColor,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ParticipantBulletRow(
+            text: 'Current Status: $status',
+            icon: Icons.info_outline_rounded,
+            color: statusColor,
+          ),
+          ParticipantBulletRow(
+            text: 'Last Published: ${_formatTimestamp(publishedAt)}',
+            icon: Icons.update_rounded,
+            color: ParticipantPalette.secondary,
+          ),
+          const SizedBox(height: 16),
+          if (_isPublishing)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: CircularProgressIndicator(
+                  color: ParticipantPalette.primary,
+                ),
+              ),
+            )
+          else
+            Row(
+              children: [
+                if (status != 'Published') ...[
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: ParticipantPalette.success,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      icon: const Icon(Icons.publish_rounded, size: 18),
+                      label: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Publish Leaderboard',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      onPressed: () => _confirmPublishOrHide(context, hackathon.id, true, false),
+                    ),
+                  ),
+                  if (status != 'Hidden') ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: ParticipantPalette.danger,
+                          side: const BorderSide(color: ParticipantPalette.danger),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        icon: const Icon(Icons.visibility_off_rounded, size: 18),
+                        label: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'Hide Leaderboard',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                        ),
+                        onPressed: () => _confirmPublishOrHide(context, hackathon.id, false, false),
+                      ),
+                    ),
+                  ],
+                ] else ...[
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: ParticipantPalette.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      icon: const Icon(Icons.sync_rounded, size: 18),
+                      label: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Update Release',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ),
+                      onPressed: () => _confirmPublishOrHide(context, hackathon.id, true, true),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: ParticipantPalette.danger,
+                        side: const BorderSide(color: ParticipantPalette.danger),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      icon: const Icon(Icons.visibility_off_rounded, size: 18),
+                      label: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Hide Leaderboard',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ),
+                      onPressed: () => _confirmPublishOrHide(context, hackathon.id, false, false),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPublishedBanner(Timestamp? publishedAt) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: ParticipantPalette.success.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: ParticipantPalette.success.withOpacity(0.18)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle_rounded, color: ParticipantPalette.success, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Leaderboard updated by organiser',
+                  style: TextStyle(
+                    color: ParticipantPalette.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Last updated: ${_formatTimestamp(publishedAt)}',
+                  style: const TextStyle(
+                    color: ParticipantPalette.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPreviewBanner(String status) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: ParticipantPalette.warning.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: ParticipantPalette.warning.withOpacity(0.18)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: ParticipantPalette.warning, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Draft Standings (Organiser Preview)',
+                  style: TextStyle(
+                    color: ParticipantPalette.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'This leaderboard is currently ${status.toLowerCase()} and hidden from participants.',
+                  style: const TextStyle(
+                    color: ParticipantPalette.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance.collection('hackathons').snapshots(),
-      builder: (context, hackathonSnapshot) {
-        if (hackathonSnapshot.connectionState == ConnectionState.waiting &&
-            !hackathonSnapshot.hasData) {
-          return const ParticipantPageScaffold(
-            title: 'Leaderboard',
-            subtitle: 'Rankings and team stats are loading in real-time.',
-            icon: Icons.leaderboard_rounded,
-            trailing: ParticipantInfoChip(
-              label: 'Loading',
-              color: Colors.white,
-            ),
-            children: [
-              ParticipantCard(
-                child: SizedBox(
-                  height: 200,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      color: ParticipantPalette.primary,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        }
+    final currentUser = FirebaseAuth.instance.currentUser;
 
-        if (hackathonSnapshot.hasError) {
-          return ParticipantPageScaffold(
-            title: 'Leaderboard',
-            subtitle: 'Error loading hackathons.',
-            icon: Icons.leaderboard_rounded,
-            trailing: const ParticipantInfoChip(
-              label: 'Error',
-              color: ParticipantPalette.danger,
-            ),
-            children: [
-              _LeaderboardStateCard(
-                title: 'Something went wrong',
-                subtitle: 'Failed to load hackathons: ${hackathonSnapshot.error}',
-                icon: Icons.error_outline_rounded,
-              ),
-            ],
-          );
-        }
-
-        final hackathons = hackathonSnapshot.data?.docs
-                .map(HackathonSummary.fromDocument)
-                .toList() ??
-            <HackathonSummary>[];
-
-        if (hackathons.isEmpty) {
-          return const ParticipantPageScaffold(
-            title: 'Leaderboard',
-            subtitle: 'Real-time team rankings and scores.',
-            icon: Icons.leaderboard_rounded,
-            trailing: ParticipantInfoChip(
-              label: '0 Events',
-              color: Colors.white,
-            ),
-            children: [
-              _LeaderboardStateCard(
-                title: 'No events created yet',
-                subtitle: 'Real-time scores will appear once an administrator publishes a hackathon and judging begins.',
-                icon: Icons.emoji_events_outlined,
-              ),
-            ],
-          );
-        }
-
-        // Default to first hackathon if none is selected
-        final selectedId = _selectedHackathonId ?? hackathons.first.id;
-        final selectedHackathon = hackathons.firstWhere(
-          (h) => h.id == selectedId,
-          orElse: () => hackathons.first,
-        );
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: currentUser != null
+          ? FirebaseFirestore.instance.collection('users').doc(currentUser.uid).snapshots()
+          : const Stream.empty(),
+      builder: (context, userSnapshot) {
+        final role = (userSnapshot.data?.data()?['role'] ?? 'participant').toString();
+        final isAdmin = role == 'admin' || role == 'organiser' || role == 'organizer';
 
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          stream: FirebaseFirestore.instance
-              .collection('hackathons')
-              .doc(selectedHackathon.id)
-              .collection('judgingResults')
-              .snapshots(),
-          builder: (context, resultsSnapshot) {
-            if (resultsSnapshot.connectionState == ConnectionState.waiting &&
-                !resultsSnapshot.hasData) {
+          stream: FirebaseFirestore.instance.collection('hackathons').snapshots(),
+          builder: (context, hackathonSnapshot) {
+            if (hackathonSnapshot.connectionState == ConnectionState.waiting &&
+                !hackathonSnapshot.hasData) {
               return const ParticipantPageScaffold(
                 title: 'Leaderboard',
                 subtitle: 'Rankings and team stats are loading in real-time.',
@@ -127,10 +441,10 @@ class _BoardScreenState extends State<BoardScreen> {
               );
             }
 
-            if (resultsSnapshot.hasError) {
+            if (hackathonSnapshot.hasError) {
               return ParticipantPageScaffold(
                 title: 'Leaderboard',
-                subtitle: 'Error loading standings.',
+                subtitle: 'Error loading hackathons.',
                 icon: Icons.leaderboard_rounded,
                 trailing: const ParticipantInfoChip(
                   label: 'Error',
@@ -139,8 +453,63 @@ class _BoardScreenState extends State<BoardScreen> {
                 children: [
                   _LeaderboardStateCard(
                     title: 'Something went wrong',
-                    subtitle: 'Failed to load standings: ${resultsSnapshot.error}',
+                    subtitle: 'Failed to load hackathons: ${hackathonSnapshot.error}',
                     icon: Icons.error_outline_rounded,
+                  ),
+                ],
+              );
+            }
+
+            final hackathons = hackathonSnapshot.data?.docs
+                    .map(HackathonSummary.fromDocument)
+                    .toList() ??
+                <HackathonSummary>[];
+
+            if (hackathons.isEmpty) {
+              return const ParticipantPageScaffold(
+                title: 'Leaderboard',
+                subtitle: 'Real-time team rankings and scores.',
+                icon: Icons.leaderboard_rounded,
+                trailing: ParticipantInfoChip(
+                  label: '0 Events',
+                  color: Colors.white,
+                ),
+                children: [
+                  _LeaderboardStateCard(
+                    title: 'No events created yet',
+                    subtitle: 'Real-time scores will appear once an administrator publishes a hackathon and judging begins.',
+                    icon: Icons.emoji_events_outlined,
+                  ),
+                ],
+              );
+            }
+
+            // Default to first hackathon if none is selected
+            final selectedId = _selectedHackathonId ?? hackathons.first.id;
+            final selectedHackathon = hackathons.firstWhere(
+              (h) => h.id == selectedId,
+              orElse: () => hackathons.first,
+            );
+
+            final leaderboardStatus = selectedHackathon.leaderboardStatus;
+            final publishedAt = selectedHackathon.leaderboardPublishedAt;
+
+            // Participant view of unpublished leaderboard
+            if (!isAdmin && leaderboardStatus != 'Published') {
+              return ParticipantPageScaffold(
+                title: 'Leaderboard',
+                subtitle: 'Dynamic standings and rankings calculated from submitted scores.',
+                icon: Icons.leaderboard_rounded,
+                trailing: ParticipantInfoChip(
+                  label: selectedHackathon.title,
+                  color: Colors.white,
+                ),
+                children: [
+                  _buildHackathonSelectorCard(hackathons, selectedHackathon),
+                  const _LeaderboardStateCard(
+                    title: 'The organiser has not published the leaderboard yet.',
+                    subtitle: 'Leaderboard will be available once officially released.',
+                    icon: Icons.lock_clock_rounded,
                   ),
                 ],
               );
@@ -148,12 +517,13 @@ class _BoardScreenState extends State<BoardScreen> {
 
             return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: FirebaseFirestore.instance
-                  .collection('submissions')
-                  .where('hackathonId', isEqualTo: selectedHackathon.id)
+                  .collection('hackathons')
+                  .doc(selectedHackathon.id)
+                  .collection('judgingResults')
                   .snapshots(),
-              builder: (context, submissionsSnapshot) {
-                if (submissionsSnapshot.connectionState == ConnectionState.waiting &&
-                    !submissionsSnapshot.hasData) {
+              builder: (context, resultsSnapshot) {
+                if (resultsSnapshot.connectionState == ConnectionState.waiting &&
+                    !resultsSnapshot.hasData) {
                   return const ParticipantPageScaffold(
                     title: 'Leaderboard',
                     subtitle: 'Rankings and team stats are loading in real-time.',
@@ -177,7 +547,7 @@ class _BoardScreenState extends State<BoardScreen> {
                   );
                 }
 
-                if (submissionsSnapshot.hasError) {
+                if (resultsSnapshot.hasError) {
                   return ParticipantPageScaffold(
                     title: 'Leaderboard',
                     subtitle: 'Error loading standings.',
@@ -189,109 +559,136 @@ class _BoardScreenState extends State<BoardScreen> {
                     children: [
                       _LeaderboardStateCard(
                         title: 'Something went wrong',
-                        subtitle: 'Failed to load submission data: ${submissionsSnapshot.error}',
+                        subtitle: 'Failed to load standings: ${resultsSnapshot.error}',
                         icon: Icons.error_outline_rounded,
                       ),
                     ],
                   );
                 }
 
-                final submissionsMap = <String, SubmissionRecord>{};
-                for (final doc in submissionsSnapshot.data?.docs ?? []) {
-                  final rec = SubmissionRecord.fromDocument(doc);
-                  submissionsMap[rec.teamCode] = rec;
-                }
-
-                final results = List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(resultsSnapshot.data?.docs ?? []);
-                results.sort((a, b) {
-                  final scoreA = (a.data()['averageScore'] as num?)?.toDouble() ?? 0.0;
-                  final scoreB = (b.data()['averageScore'] as num?)?.toDouble() ?? 0.0;
-                  if (scoreA != scoreB) {
-                    return scoreB.compareTo(scoreA); // Descending score
-                  }
-                  final nameA = (a.data()['teamName'] ?? '').toString().toLowerCase();
-                  final nameB = (b.data()['teamName'] ?? '').toString().toLowerCase();
-                  if (nameA != nameB) {
-                    return nameA.compareTo(nameB); // Ascending name
-                  }
-                  final idA = (a.data()['teamId'] ?? a.id).toString().toLowerCase();
-                  final idB = (b.data()['teamId'] ?? b.id).toString().toLowerCase();
-                  return idA.compareTo(idB); // Ascending ID fallback
-                });
-
-                final isAnonymous = widget.isJudgeView && selectedHackathon.anonymousJudging;
-                final registeredTeamsSorted = List<String>.from(selectedHackathon.registeredTeams)..sort();
-
-                return ParticipantPageScaffold(
-                  title: 'Leaderboard',
-                  subtitle: 'Dynamic standings and rankings calculated from submitted scores.',
-                  icon: Icons.leaderboard_rounded,
-                  trailing: ParticipantInfoChip(
-                    label: selectedHackathon.title,
-                    color: Colors.white,
-                  ),
-                  children: [
-                    // Hackathon Selector Dropdown
-                    ParticipantCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: FirebaseFirestore.instance
+                      .collection('submissions')
+                      .where('hackathonId', isEqualTo: selectedHackathon.id)
+                      .snapshots(),
+                  builder: (context, submissionsSnapshot) {
+                    if (submissionsSnapshot.connectionState == ConnectionState.waiting &&
+                        !submissionsSnapshot.hasData) {
+                      return const ParticipantPageScaffold(
+                        title: 'Leaderboard',
+                        subtitle: 'Rankings and team stats are loading in real-time.',
+                        icon: Icons.leaderboard_rounded,
+                        trailing: ParticipantInfoChip(
+                          label: 'Loading',
+                          color: Colors.white,
+                        ),
                         children: [
-                          const ParticipantSectionHeader(
-                            title: 'Select Hackathon',
-                            subtitle: 'Choose an active event to review realtime standings.',
-                          ),
-                          DropdownButtonFormField<String>(
-                            value: selectedHackathon.id,
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: const Color(0xFFF8FAFC),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide.none,
+                          ParticipantCard(
+                            child: SizedBox(
+                              height: 200,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: ParticipantPalette.primary,
+                                ),
                               ),
                             ),
-                            items: hackathons.map((h) {
-                              return DropdownMenuItem<String>(
-                                value: h.id,
-                                child: Text(h.title),
-                              );
-                            }).toList(),
-                            onChanged: (val) {
-                              setState(() {
-                                _selectedHackathonId = val;
-                              });
-                            },
                           ),
                         ],
-                      ),
-                    ),
+                      );
+                    }
 
-                    if (results.isEmpty)
-                      const _LeaderboardStateCard(
-                        title: 'No scores submitted yet',
-                        subtitle: 'Standings will update in real-time as soon as judges submit evaluations for this event.',
-                        icon: Icons.rule_folder_outlined,
-                      )
-                    else ...[
-                      // Dynamic Podium (top 3)
-                      _TopThreePodiumCard(
-                        results: results,
-                        isAnonymous: isAnonymous,
-                        registeredTeamsSorted: registeredTeamsSorted,
-                      ),
+                    if (submissionsSnapshot.hasError) {
+                      return ParticipantPageScaffold(
+                        title: 'Leaderboard',
+                        subtitle: 'Error loading standings.',
+                        icon: Icons.leaderboard_rounded,
+                        trailing: const ParticipantInfoChip(
+                          label: 'Error',
+                          color: ParticipantPalette.danger,
+                        ),
+                        children: [
+                          _LeaderboardStateCard(
+                            title: 'Something went wrong',
+                            subtitle: 'Failed to load submission data: ${submissionsSnapshot.error}',
+                            icon: Icons.error_outline_rounded,
+                          ),
+                        ],
+                      );
+                    }
 
-                      // Full standings list
-                      _RankingListCard(
-                        results: results,
-                        isAnonymous: isAnonymous,
-                        registeredTeamsSorted: registeredTeamsSorted,
-                        submissionsMap: submissionsMap,
-                      ),
-                    ],
+                    final submissionsMap = <String, SubmissionRecord>{};
+                    for (final doc in submissionsSnapshot.data?.docs ?? []) {
+                      final rec = SubmissionRecord.fromDocument(doc);
+                      submissionsMap[rec.teamCode] = rec;
+                    }
 
-                    // Static info / guidelines
-                    const _JudgingFocusCard(),
-                  ],
+                    final results = List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(resultsSnapshot.data?.docs ?? []);
+                    results.sort((a, b) {
+                      final scoreA = (a.data()['averageScore'] as num?)?.toDouble() ?? 0.0;
+                      final scoreB = (b.data()['averageScore'] as num?)?.toDouble() ?? 0.0;
+                      if (scoreA != scoreB) {
+                        return scoreB.compareTo(scoreA); // Descending score
+                      }
+                      final nameA = (a.data()['teamName'] ?? '').toString().toLowerCase();
+                      final nameB = (b.data()['teamName'] ?? '').toString().toLowerCase();
+                      if (nameA != nameB) {
+                        return nameA.compareTo(nameB); // Ascending name
+                      }
+                      final idA = (a.data()['teamId'] ?? a.id).toString().toLowerCase();
+                      final idB = (b.data()['teamId'] ?? b.id).toString().toLowerCase();
+                      return idA.compareTo(idB); // Ascending ID fallback
+                    });
+
+                    final isAnonymous = widget.isJudgeView && selectedHackathon.anonymousJudging;
+                    final registeredTeamsSorted = List<String>.from(selectedHackathon.registeredTeams)..sort();
+
+                    return ParticipantPageScaffold(
+                      title: 'Leaderboard',
+                      subtitle: 'Dynamic standings and rankings calculated from submitted scores.',
+                      icon: Icons.leaderboard_rounded,
+                      trailing: ParticipantInfoChip(
+                        label: selectedHackathon.title,
+                        color: Colors.white,
+                      ),
+                      children: [
+                        _buildHackathonSelectorCard(hackathons, selectedHackathon),
+
+                        if (isAdmin)
+                          _buildOrganiserControls(context, selectedHackathon),
+
+                        if (leaderboardStatus == 'Published')
+                          _buildPublishedBanner(publishedAt)
+                        else if (isAdmin)
+                          _buildPreviewBanner(leaderboardStatus),
+
+                        if (results.isEmpty)
+                          const _LeaderboardStateCard(
+                            title: 'No scores submitted yet',
+                            subtitle: 'Standings will update in real-time as soon as judges submit evaluations for this event.',
+                            icon: Icons.rule_folder_outlined,
+                          )
+                        else ...[
+                          // Dynamic Podium (top 3)
+                          _TopThreePodiumCard(
+                            results: results,
+                            isAnonymous: isAnonymous,
+                            registeredTeamsSorted: registeredTeamsSorted,
+                          ),
+
+                          // Full standings list
+                          _RankingListCard(
+                            results: results,
+                            isAnonymous: isAnonymous,
+                            registeredTeamsSorted: registeredTeamsSorted,
+                            submissionsMap: submissionsMap,
+                          ),
+                        ],
+
+                        // Static info / guidelines
+                        const _JudgingFocusCard(),
+                      ],
+                    );
+                  },
                 );
               },
             );
