@@ -51,7 +51,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
 
-      body: IndexedStack(index: _currentIndex, children: _pages),
+      body: IndexedStack(
+        sizing: StackFit.expand,
+        index: _currentIndex,
+        children: _pages,
+      ),
       bottomNavigationBar: GlobalBottomNavBar(
         items: adminBottomNavItems,
         currentIndex: _currentIndex,
@@ -387,6 +391,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                           );
                         },
+                        behavior: HitTestBehavior.opaque,
                         child: const ActionCard(
                           title: "Add\nHackathon",
                           icon: Icons.rocket_launch_rounded,
@@ -403,6 +408,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                           );
                         },
+                        behavior: HitTestBehavior.opaque,
 
                         child: const ActionCard(
                           title: "Manage Judges",
@@ -422,6 +428,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                           );
                         },
+                        behavior: HitTestBehavior.opaque,
                         child: const ActionCard(
                           title: "View Submissions",
                           icon: Icons.description_outlined,
@@ -438,6 +445,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                           );
                         },
+                        behavior: HitTestBehavior.opaque,
                         child: const ActionCard(
                           title: "Schedule Event",
                           icon: Icons.calendar_month_rounded,
@@ -702,7 +710,9 @@ class TaskCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Container(
+        constraints: const BoxConstraints(minHeight: 80),
         padding: const EdgeInsets.all(18),
 
         decoration: BoxDecoration(

@@ -14,6 +14,7 @@ class GoogleSignInButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: isLoading ? null : onTap,
+      behavior: HitTestBehavior.opaque,
       child: Container(
         width: double.infinity,
         height: 55,

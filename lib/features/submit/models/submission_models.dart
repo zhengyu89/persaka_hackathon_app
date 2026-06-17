@@ -59,6 +59,8 @@ class HackathonSummary {
     this.finalResultsRevealed = false,
     this.finalResultsPublishedAt,
     this.finalResultsPublishedBy = '',
+    this.leaderboardStatus = 'Draft',
+    this.leaderboardPublishedAt,
   });
 
   final String id;
@@ -81,6 +83,8 @@ class HackathonSummary {
   final bool finalResultsRevealed;
   final Timestamp? finalResultsPublishedAt;
   final String finalResultsPublishedBy;
+  final String leaderboardStatus;
+  final Timestamp? leaderboardPublishedAt;
 
   factory HackathonSummary.fromMap(String id, Map<String, dynamic> data) {
     Timestamp? deadlineTs;
@@ -123,6 +127,19 @@ class HackathonSummary {
       }
     }
 
+    Timestamp? leaderboardPublishedAt;
+    if (data['leaderboardPublishedAt'] is Timestamp) {
+      leaderboardPublishedAt = data['leaderboardPublishedAt'] as Timestamp;
+    } else {
+      final publishedAt = data['leaderboardPublishedAt'];
+      if (publishedAt != null) {
+        final parsed = DateTime.tryParse(publishedAt.toString());
+        if (parsed != null) {
+          leaderboardPublishedAt = Timestamp.fromDate(parsed);
+        }
+      }
+    }
+
     return HackathonSummary(
       id: id,
       title: (data['title'] ?? 'Untitled Hackathon').toString(),
@@ -151,6 +168,8 @@ class HackathonSummary {
       finalResultsPublishedAt: finalResultsPublishedAt,
       finalResultsPublishedBy:
           (data['finalResultsPublishedBy'] ?? '').toString(),
+      leaderboardStatus: (data['leaderboardStatus'] ?? 'Draft').toString(),
+      leaderboardPublishedAt: leaderboardPublishedAt,
     );
   }
 

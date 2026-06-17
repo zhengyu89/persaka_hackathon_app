@@ -237,10 +237,18 @@ class _CreateTeamScreenState
                   GestureDetector(
                     onTap: () =>
                         Navigator.pop(context),
-                    child: const Icon(
-                      Icons
-                          .arrow_back_ios_new_rounded,
-                      color: Colors.white,
+                    behavior: HitTestBehavior.opaque,
+                    child: const SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Icon(
+                          Icons
+                              .arrow_back_ios_new_rounded,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
 
@@ -452,6 +460,7 @@ class _CreateTeamScreenState
                     onTap: isLoading
                         ? null
                         : createTeam,
+                    behavior: HitTestBehavior.opaque,
 
                     child: Container(
                       width: double.infinity,

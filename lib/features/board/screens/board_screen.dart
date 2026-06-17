@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -28,11 +29,442 @@ class BoardScreen extends StatefulWidget {
 
 class _BoardScreenState extends State<BoardScreen> {
   String? _selectedHackathonId;
+  bool _isPublishing = false;
 
   BoardDataSource get _dataSource =>
       widget.dataSource ?? const FirestoreBoardDataSource();
 
   FirebaseAuth get _auth => widget.auth ?? FirebaseAuth.instance;
+
+  String _formatTimestamp(Timestamp? timestamp) {
+    if (timestamp == null) {
+      return 'Never';
+    }
+
+    final dt = timestamp.toDate();
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    final month = months[dt.month - 1];
+    final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
+    final ampm = dt.hour >= 12 ? 'PM' : 'AM';
+    final minute = dt.minute.toString().padLeft(2, '0');
+    return '$month ${dt.day}, ${dt.year} at $hour:$minute $ampm';
+  }
+
+  Future<void> _confirmPublishOrHide(
+    BuildContext context,
+    String hackathonId,
+    bool publish,
+    bool isUpdate,
+  ) async {
+    final title =
+        publish
+            ? (isUpdate ? 'Update Published Standings?' : 'Publish Standings?')
+            : 'Hide Standings?';
+    final content =
+        publish
+            ? (isUpdate
+                ? 'Are you sure you want to release the latest scores and rankings to participants?'
+                : 'Are you sure you want to release the current standings and rankings to all participants?')
+            : 'Are you sure you want to hide the leaderboard rankings from participants?';
+    final actionText = publish ? (isUpdate ? 'Update' : 'Publish') : 'Hide';
+    final actionColor =
+        publish ? ParticipantPalette.success : ParticipantPalette.danger;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Text(content),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: ParticipantPalette.textSecondary),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: actionColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(actionText),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true) {
+      return;
+    }
+
+    setState(() {
+      _isPublishing = true;
+    });
+
+    try {
+      final payload = <String, dynamic>{
+        'leaderboardStatus': publish ? 'Published' : 'Hidden',
+        if (publish) 'leaderboardPublishedAt': FieldValue.serverTimestamp(),
+      };
+
+      await FirebaseFirestore.instance
+          .collection('hackathons')
+          .doc(hackathonId)
+          .set(payload, SetOptions(merge: true));
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            publish
+                ? (isUpdate
+                    ? 'Leaderboard updates published successfully.'
+                    : 'Leaderboard published successfully.')
+                : 'Leaderboard standings hidden.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update leaderboard status: $error'),
+          backgroundColor: ParticipantPalette.danger,
+        ),
+      );
+    } finally {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isPublishing = false;
+      });
+    }
+  }
+
+  Widget _buildOrganiserControls(
+    BuildContext context,
+    HackathonSummary hackathon,
+  ) {
+    final status = hackathon.leaderboardStatus;
+    final publishedAt = hackathon.leaderboardPublishedAt;
+
+    Color statusColor;
+    switch (status) {
+      case 'Published':
+        statusColor = ParticipantPalette.success;
+        break;
+      case 'Hidden':
+        statusColor = ParticipantPalette.danger;
+        break;
+      default:
+        statusColor = ParticipantPalette.warning;
+    }
+
+    return ParticipantCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(
+                child: ParticipantSectionHeader(
+                  title: 'Organiser Control Panel',
+                  subtitle: 'Control standings visibility and release updates.',
+                ),
+              ),
+              const SizedBox(width: 12),
+              ParticipantInfoChip(
+                label: status.toUpperCase(),
+                color: statusColor,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ParticipantBulletRow(
+            text: 'Current Status: $status',
+            icon: Icons.info_outline_rounded,
+            color: statusColor,
+          ),
+          ParticipantBulletRow(
+            text: 'Last Published: ${_formatTimestamp(publishedAt)}',
+            icon: Icons.update_rounded,
+            color: ParticipantPalette.secondary,
+          ),
+          const SizedBox(height: 16),
+          if (_isPublishing)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: CircularProgressIndicator(
+                  color: ParticipantPalette.primary,
+                ),
+              ),
+            )
+          else
+            Row(
+              children: [
+                if (status != 'Published') ...[
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed:
+                          () => _confirmPublishOrHide(
+                            context,
+                            hackathon.id,
+                            true,
+                            false,
+                          ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: ParticipantPalette.success,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      icon: const Icon(Icons.publish_rounded, size: 18),
+                      label: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Publish Leaderboard',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (status != 'Hidden') ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed:
+                            () => _confirmPublishOrHide(
+                              context,
+                              hackathon.id,
+                              false,
+                              false,
+                            ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: ParticipantPalette.danger,
+                          side: const BorderSide(
+                            color: ParticipantPalette.danger,
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.visibility_off_rounded,
+                          size: 18,
+                        ),
+                        label: const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            'Hide Leaderboard',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ] else ...[
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed:
+                          () => _confirmPublishOrHide(
+                            context,
+                            hackathon.id,
+                            true,
+                            true,
+                          ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: ParticipantPalette.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      icon: const Icon(Icons.sync_rounded, size: 18),
+                      label: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Update Release',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed:
+                          () => _confirmPublishOrHide(
+                            context,
+                            hackathon.id,
+                            false,
+                            false,
+                          ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: ParticipantPalette.danger,
+                        side: const BorderSide(
+                          color: ParticipantPalette.danger,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      icon: const Icon(Icons.visibility_off_rounded, size: 18),
+                      label: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Hide Leaderboard',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPublishedBanner(Timestamp? publishedAt) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: ParticipantPalette.success.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: ParticipantPalette.success.withOpacity(0.18)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.check_circle_rounded,
+            color: ParticipantPalette.success,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Leaderboard updated by organiser',
+                  style: TextStyle(
+                    color: ParticipantPalette.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Last updated: ${_formatTimestamp(publishedAt)}',
+                  style: const TextStyle(
+                    color: ParticipantPalette.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPreviewBanner(String status) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: ParticipantPalette.warning.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: ParticipantPalette.warning.withOpacity(0.18)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.warning_amber_rounded,
+            color: ParticipantPalette.warning,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Draft Standings (Organiser Preview)',
+                  style: TextStyle(
+                    color: ParticipantPalette.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'This leaderboard is currently ${status.toLowerCase()} and hidden from participants.',
+                  style: const TextStyle(
+                    color: ParticipantPalette.textSecondary,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -340,12 +772,15 @@ class _BoardScreenState extends State<BoardScreen> {
         }
 
         final selectedHackathon = _resolveSelectedHackathon(hackathons);
+        final isAdmin = widget.audience == BoardAudience.admin;
         final isAnonymous =
             widget.audience == BoardAudience.judge &&
             selectedHackathon.anonymousJudging;
         final registeredTeamsSorted = List<String>.from(
           selectedHackathon.registeredTeams,
         )..sort();
+        final leaderboardStatus = selectedHackathon.leaderboardStatus;
+        final publishedAt = selectedHackathon.leaderboardPublishedAt;
 
         return StreamBuilder<List<BoardStanding>>(
           stream: _dataSource.watchLiveResults(selectedHackathon.id),
@@ -382,6 +817,12 @@ class _BoardScreenState extends State<BoardScreen> {
                     });
                   },
                 ),
+                if (isAdmin)
+                  _buildOrganiserControls(context, selectedHackathon),
+                if (leaderboardStatus == 'Published')
+                  _buildPublishedBanner(publishedAt)
+                else if (isAdmin)
+                  _buildPreviewBanner(leaderboardStatus),
                 if (standings.isEmpty)
                   const _BoardStateCard(
                     title: 'No scores submitted yet',

@@ -252,6 +252,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       GestureDetector(
                         onTap: isLoading ? null : register,
+                        behavior: HitTestBehavior.opaque,
                         child: Container(
                           width: double.infinity,
                           height: 55,
@@ -300,9 +301,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 AppRoutes.login,
                               );
                             },
-                            child: const Text(
-                              'Sign in',
-                              style: TextStyle(color: Color(0xFF4F39F6)),
+                            behavior: HitTestBehavior.opaque,
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 8,
+                              ),
+                              child: Text(
+                                'Sign in',
+                                style: TextStyle(color: Color(0xFF4F39F6)),
+                              ),
                             ),
                           ),
                         ],
