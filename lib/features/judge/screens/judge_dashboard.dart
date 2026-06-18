@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../../shared/utils/judge_assignment_utils.dart';
 import '../../../shared/widgets/global_bottom_nav_bar.dart';
 import '../../../shared/widgets/hackathon_cover.dart';
 import '../../../shared/widgets/participant_ui.dart';
@@ -194,7 +195,7 @@ class _JudgeHackathonCard extends StatelessWidget {
               _JudgeChip(
                 label: '${assignment.assignedTeamIds.length} Assigned Teams',
                 color: ParticipantPalette.primary,
-                backgroundColor: const Color(0xFFEEF2FF),
+                backgroundColor: ParticipantPalette.primary.withOpacity(0.08),
               ),
               _JudgeChip(
                 label: rubricReady ? 'Rubric Ready' : 'No rubric configured',
@@ -204,8 +205,8 @@ class _JudgeHackathonCard extends StatelessWidget {
                         : ParticipantPalette.warning,
                 backgroundColor:
                     rubricReady
-                        ? const Color(0xFFDCFCE7)
-                        : const Color(0xFFFEF3C7),
+                        ? ParticipantPalette.success.withOpacity(0.12)
+                        : ParticipantPalette.warning.withOpacity(0.14),
               ),
             ],
           ),
@@ -228,6 +229,31 @@ class _JudgeHackathonCard extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
+                elevation: 3,
+                shadowColor: ParticipantPalette.primary.withOpacity(0.28),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.pushNamed(
+                  context,
+                  '/app/judge/hackathon/${Uri.encodeComponent(assignment.hackathon.id)}/rubric',
+                  arguments: {'assignedTeams': assignment.assignedTeamIds},
+                );
+              },
+              icon: const Icon(Icons.rule_rounded),
+              label: const Text('View Rubric'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: ParticipantPalette.textPrimary,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                side: BorderSide(color: ParticipantPalette.primary.withOpacity(0.18)),
               ),
             ),
           ),
@@ -249,8 +275,11 @@ class _JudgeMetricTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFEEF2FF),
+          color: ParticipantPalette.primary.withOpacity(0.08),
           borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: ParticipantPalette.primary.withOpacity(0.14),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -297,6 +326,7 @@ class _JudgeChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(0.18)),
       ),
       child: Text(
         label,
@@ -376,28 +406,14 @@ Stream<List<_JudgeHackathonAssignment>> _assignedHackathonsStream(
         for (final hackathonDoc in snapshot.docs) {
           final data = hackathonDoc.data();
 
-          final rawAssignmentsObj = data['judgeAssignments'];
-          final judgeAssignments = <Map<String, dynamic>>[];
-          if (rawAssignmentsObj is List) {
-            for (final item in rawAssignmentsObj) {
-              if (item is Map) {
-                judgeAssignments.add(Map<String, dynamic>.from(item));
-              }
-            }
-          } else if (rawAssignmentsObj is Map) {
-            for (final value in rawAssignmentsObj.values) {
-              if (value is Map) {
-                judgeAssignments.add(Map<String, dynamic>.from(value));
-              }
-            }
-          }
+          final judgeAssignments = normalizeJudgeAssignments(data['judgeAssignments']);
 
-          final assignedTeams =
-              judgeAssignments
-                  .where((assignment) => assignment['judgeId'] == judgeUid)
-                  .map((assignment) => assignment['teamId'].toString())
-                  .toSet()
-                  .toList();
+          final assignedTeams = judgeAssignments
+              .where((assignment) => assignment['judgeId'] == judgeUid)
+              .map((assignment) => assignment['teamId']?.toString() ?? '')
+              .where((teamId) => teamId.isNotEmpty)
+              .toSet()
+              .toList();
 
           if (assignedTeams.isEmpty) {
             continue;

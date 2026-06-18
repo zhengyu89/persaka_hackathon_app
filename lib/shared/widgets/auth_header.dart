@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_colors.dart';
+
 class AuthHeader extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -23,15 +25,9 @@ class AuthHeader extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.fromLTRB(24, 60, 24, 40),
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF4F39F6),
-              Color(0xFF9810FA),
-              Color(0xFF432DD7),
-            ],
-          ),
+          gradient: AppColors.mainGradient,
           borderRadius: BorderRadius.vertical(
-            bottom: Radius.circular(40),
+            bottom: Radius.circular(32),
           ),
         ),
         child: Column(
@@ -54,11 +50,17 @@ class AuthHeader extends StatelessWidget {
 
             if (showBack) const SizedBox(height: 20),
 
-            Image.asset(
-            'assets/images/hackathon.png',
-            width: 150,
-            height: 150,
-          ),
+            Container(
+              width: 144,
+              height: 144,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.14),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
+              ),
+              child: Image.asset('assets/images/hackathon.png'),
+            ),
 
             const SizedBox(height: 20),
 
@@ -67,7 +69,8 @@ class AuthHeader extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 28,
                 color: Colors.white,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Poppins',
               ),
             ),
 
@@ -75,7 +78,7 @@ class AuthHeader extends StatelessWidget {
 
             Text(
               description,
-              style: const TextStyle(color: Colors.white70),
+              style: const TextStyle(color: Colors.white),
             ),
           ],
         ),

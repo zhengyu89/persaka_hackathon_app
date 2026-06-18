@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../../shared/utils/judge_assignment_utils.dart';
 import '../../../shared/widgets/participant_ui.dart';
 import '../../submit/models/submission_models.dart';
 
@@ -40,24 +41,9 @@ class JudgeTeamSelectionScreen extends StatelessWidget {
             assignmentSnapshot.data?.data() ??
             const <String, dynamic>{};
 
-        final rawAssignmentsObj = hackathonData['judgeAssignments'];
-        final rawAssignments = <Map<String, dynamic>>[];
-        if (rawAssignmentsObj is List) {
-          for (final item in rawAssignmentsObj) {
-            if (item is Map) {
-              rawAssignments.add(Map<String, dynamic>.from(item));
-            }
-          }
-        } else if (rawAssignmentsObj is Map) {
-          for (final value in rawAssignmentsObj.values) {
-            if (value is Map) {
-              rawAssignments.add(Map<String, dynamic>.from(value));
-            }
-          }
-        }
+        final rawAssignments = normalizeJudgeAssignments(hackathonData['judgeAssignments']);
 
-        final assignmentByTeamId =
-            <String, _JudgeTeamAssignment>{};
+        final assignmentByTeamId = <String, _JudgeTeamAssignment>{};
 
         for (final assignment in rawAssignments) {
           if (assignment['judgeId'] != judgeUid) {

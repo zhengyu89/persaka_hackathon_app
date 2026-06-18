@@ -1,37 +1,59 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // 🌈 Primary Gradient (from your Figma)
-  static const Color primary = Color(0xFF4F39F6);
-  static const Color secondary = Color(0xFF9810FA);
-  static const Color accent = Color(0xFFE60076);
+  // Primary brand colors - accents only
+  static const Color persakaRed = Color(0xFFFF001F); // #FF001F (2%)
+  static const Color darkPurple = Color(0xFF4B0082); // #4B0082 (8%)
+  static const Color accentPurple = Color(0xFF6A0DAD);
 
-  // 🎨 Gradient
+  // Background / surface palette (mostly white & light grey)
+  static const Color lightGray = Color(0xFFF5F5F5); // #F5F5F5
+  static const Color darkGray = Color(0xFF666666);
+  static const Color midnight = Color(0xFFFFFFFF);
+  static const Color navy = Color(0xFFF5F7FA);
+  static const Color panel = Color(0xFFFFFFFF);
+  static const Color glassPanel = Color(0xFFFFFFFF);
+  static const Color mutedText = Color(0xFF666666);
+  static const Color subtleText = Color(0xFF7A7A7A);
+
+  static const Color primary = persakaRed;
+  static const Color secondary = darkPurple;
+  static const Color accent = accentPurple;
+
   static const LinearGradient mainGradient = LinearGradient(
     colors: [
       primary,
+      accentPurple,
       secondary,
-      accent,
     ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
-  // 🖤 Background
-  static const Color backgroundDark = Color(0xFF121212);
-  static const Color backgroundLight = Colors.white;
+  static const LinearGradient redGradient = LinearGradient(
+    colors: [
+      Color(0xFFFF0A1F),
+      Color(0xFFE00018),
+      Color(0xFFB80044),
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
-  // ⚪ Text Colors
-  static const Color textPrimary = Colors.white;
-  static const Color textSecondary = Color(0xFFE0E7FF);
-  static const Color textDark = Colors.black;
+  static const Color backgroundDark = lightGray;
+  static const Color backgroundLight = Color(0xFFF8F8FB);
 
-  // 🟢 Status Colors
-  static const Color success = Colors.green;
-  static const Color error = Colors.red;
-  static const Color warning = Colors.orange;
+  static const Color textPrimary = Color(0xFF1A1A1A);
+  static const Color textSecondary = mutedText;
+  static const Color textDark = Color(0xFF1A1A1A);
 
-  // 🧊 Glass Effect
-  static Color glassWhite = Colors.white.withOpacity(0.1);
-  static Color glassBorder = Colors.white.withOpacity(0.2);
+  static const Color success = Color(0xFF16A34A);
+  static const Color error = Color(0xFFFF0A1F);
+  static const Color warning = Color(0xFFF59E0B);
+
+  static Color glassWhite = Colors.white;
+  static Color glassBorder = Colors.black.withOpacity(0.08);
+  static Color softShadow = Colors.black.withOpacity(0.08);
+  static Color purpleTint = darkPurple.withOpacity(0.08);
+  static Color redTint = persakaRed.withOpacity(0.08);
 }

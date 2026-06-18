@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/services/schedule_service.dart';
+import '../../../core/constants/app_colors.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -37,18 +38,18 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF4F39F6),
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.textPrimary,
         elevation: 0,
         title: const Text('Schedule & Updates',
             style: TextStyle(fontWeight: FontWeight.w600)),
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white60,
+          indicatorColor: AppColors.persakaRed,
+          labelColor: AppColors.darkPurple,
+          unselectedLabelColor: AppColors.subtleText,
           tabs: const [
             Tab(icon: Icon(Icons.calendar_today), text: 'Schedule'),
             Tab(icon: Icon(Icons.campaign), text: 'Announcements'),
@@ -70,7 +71,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.calendar_today, size: 64, color: Colors.grey),
+                      Icon(Icons.calendar_today, size: 64, color: AppColors.mutedText),
                       SizedBox(height: 16),
                       Text('No schedule yet',
                           style: TextStyle(color: Colors.grey, fontSize: 16)),
@@ -105,7 +106,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                           height: 48,
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFF4F39F6), Color(0xFF9810FA)],
+                              colors: [Color(0xFFFF0A1F), Color(0xFF5A189A)],
                             ),
                             borderRadius: BorderRadius.circular(14),
                           ),
@@ -126,28 +127,28 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF0A0A0A),
+                                  color: Color(0xFF111827),
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Row(
                                 children: [
-                                  const Icon(Icons.access_time,
-                                      size: 12, color: Color(0xFF6A7282)),
+                                    const Icon(Icons.access_time,
+                                      size: 12, color: AppColors.mutedText),
                                   const SizedBox(width: 4),
                                   Text(
                                     '${_formatTime(data['startTime'])} - ${_formatTime(data['endTime'])}',
                                     style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Color(0xFF6A7282)),
+                                      fontSize: 12,
+                                      color: AppColors.mutedText),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 2),
                               Row(
                                 children: [
-                                  const Icon(Icons.location_on,
-                                      size: 12, color: Color(0xFF6A7282)),
+                                    const Icon(Icons.location_on,
+                                      size: 12, color: AppColors.mutedText),
                                   const SizedBox(width: 4),
                                   Text(
                                     data['location'] ?? '',
@@ -180,10 +181,10 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.campaign, size: 64, color: Colors.grey),
+                      Icon(Icons.campaign, size: 64, color: AppColors.mutedText),
                       SizedBox(height: 16),
-                      Text('No announcements yet',
-                          style: TextStyle(color: Colors.grey, fontSize: 16)),
+                        Text('No announcements yet',
+                          style: TextStyle(color: AppColors.mutedText, fontSize: 16)),
                     ],
                   ),
                 );
@@ -201,8 +202,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                          color: const Color(0xFF4F39F6).withOpacity(0.2)),
+                        border: Border.all(
+                          color: AppColors.persakaRed.withOpacity(0.12)),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.05),
@@ -219,11 +220,11 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF4F39F6).withOpacity(0.1),
+                                color: const Color(0xFFFF0A1F).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: const Icon(Icons.campaign,
-                                  color: Color(0xFF4F39F6), size: 20),
+                                  color: Color(0xFFFF0A1F), size: 20),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -232,7 +233,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF0A0A0A),
+                                  color: Color(0xFF111827),
                                 ),
                               ),
                             ),
@@ -248,8 +249,8 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                           const SizedBox(height: 8),
                           Text(
                             'Posted by ${data['createdBy'] ?? ''}',
-                            style: const TextStyle(
-                                fontSize: 12, color: Color(0xFF9CA3AF)),
+                              style: const TextStyle(
+                                fontSize: 12, color: AppColors.subtleText),
                           ),
                         ],
                       ],

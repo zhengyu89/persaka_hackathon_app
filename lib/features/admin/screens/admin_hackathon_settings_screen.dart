@@ -25,7 +25,7 @@ class AdminHackathonSettingsScreen extends StatelessWidget {
             data == null ? null : HackathonSummary.fromMap(hackathonId, data);
 
         return Scaffold(
-          backgroundColor: const Color(0xFFF3F4F6),
+          backgroundColor: const Color(0xFFF8F8FB),
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             foregroundColor: const Color(0xFF111827),
@@ -606,7 +606,7 @@ class _SettingsFormState extends State<_SettingsForm> {
                                   _scoringMethod = value ?? 'Average Score';
                                 }),
                             title: Text(method),
-                            activeColor: const Color(0xFF4F39F6),
+                            activeColor: const Color(0xFFFF0A1F),
                             contentPadding: EdgeInsets.zero,
                           );
                         }).toList(),
@@ -870,7 +870,7 @@ class _SettingsFormState extends State<_SettingsForm> {
                       : const Icon(Icons.save_rounded),
               label: Text(_isSaving ? 'Saving...' : 'Save Settings'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4F39F6),
+                backgroundColor: const Color(0xFFFF0A1F),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -946,7 +946,7 @@ class _SettingsSwitch extends StatelessWidget {
       value: value,
       onChanged: onChanged,
       contentPadding: EdgeInsets.zero,
-      activeColor: const Color(0xFF4F39F6),
+      activeColor: const Color(0xFFFF0A1F),
     );
   }
 }
@@ -1333,7 +1333,7 @@ class _CriterionEditorSheetState extends State<_CriterionEditorSheet> {
                     }),
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Active Criterion'),
-                activeColor: const Color(0xFF4F39F6),
+                activeColor: const Color(0xFFFF0A1F),
               ),
               Container(
                 width: double.infinity,
@@ -1372,7 +1372,7 @@ class _CriterionEditorSheetState extends State<_CriterionEditorSheet> {
                 child: ElevatedButton(
                   onPressed: _isSaving ? null : _saveCriterion,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4F39F6),
+                    backgroundColor: const Color(0xFFFF0A1F),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
@@ -1515,7 +1515,7 @@ class AdminHackathonTeamDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: const Color(0xFFF8F8FB),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: const Color(0xFF111827),
@@ -1634,7 +1634,7 @@ class AdminHackathonJudgeDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: const Color(0xFFF8F8FB),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: const Color(0xFF111827),
@@ -1726,7 +1726,7 @@ class _AdminTeamTile extends StatelessWidget {
       trailing: Text(
         '${team.members.length} Members',
         style: const TextStyle(
-          color: Color(0xFF4F39F6),
+          color: Color(0xFFFF0A1F),
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -1773,7 +1773,7 @@ class _AdminJudgeTile extends StatelessWidget {
       trailing: Text(
         '${judge.assignedTeamCount} Teams',
         style: const TextStyle(
-          color: Color(0xFF4F39F6),
+          color: Color(0xFFFF0A1F),
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -1832,7 +1832,7 @@ class _MiniChip extends StatelessWidget {
       child: Text(
         label,
         style: const TextStyle(
-          color: Color(0xFF4F39F6),
+          color: Color(0xFFFF0A1F),
           fontWeight: FontWeight.w700,
           fontSize: 12,
         ),

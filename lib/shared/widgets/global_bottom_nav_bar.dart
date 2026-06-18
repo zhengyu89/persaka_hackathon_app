@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_colors.dart';
+
 class GlobalBottomNavItem {
   const GlobalBottomNavItem({
     required this.icon,
@@ -47,44 +49,69 @@ class GlobalBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+    return SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        decoration: BoxDecoration(
+          color: AppColors.panel,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(24),
+            bottom: Radius.circular(20),
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: BottomNavigationBar(
-          currentIndex: currentIndex,
-          onTap: onTap,
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          elevation: 0,
-          selectedItemColor: const Color(0xFF4F39F6),
-          unselectedItemColor: const Color(0xFF9CA3AF),
-          selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
+          border: Border.all(color: AppColors.glassBorder),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.softShadow,
+              blurRadius: 24,
+              offset: const Offset(0, -8),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(24),
+            bottom: Radius.circular(20),
           ),
-          unselectedLabelStyle: const TextStyle(
-            fontSize: 12,
-          ),
-          items: items
-              .map(
-                (item) => BottomNavigationBarItem(
-                  icon: Icon(item.icon),
-                  label: item.label,
+          child: BottomNavigationBar(
+            currentIndex: currentIndex,
+            onTap: onTap,
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: AppColors.panel,
+            elevation: 0,
+            selectedItemColor: AppColors.darkPurple,
+            unselectedItemColor: AppColors.darkGray,
+            selectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+              fontFamily: 'Inter',
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontSize: 12,
+              fontFamily: 'Inter',
+            ),
+            items: List.generate(items.length, (index) {
+              final item = items[index];
+
+              return BottomNavigationBarItem(
+                icon: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: index == currentIndex
+                        ? AppColors.purpleTint
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Icon(item.icon, size: 23),
                 ),
-              )
-              .toList(),
+                label: item.label,
+              );
+            }),
+          ),
         ),
       ),
     );

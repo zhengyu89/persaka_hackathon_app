@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../shared/widgets/hackathon_cover.dart';
 import '../../../shared/widgets/participant_ui.dart';
+import '../../../core/constants/app_colors.dart';
 import 'create_team_screen.dart';
 import 'join_team_screen.dart';
 
@@ -342,7 +343,7 @@ class _TeamActionCardRow extends StatelessWidget {
             icon: Icons.add_rounded,
             colors: const [
               Color(0xFF615FFF),
-              Color(0xFF9810FA),
+              Color(0xFF5A189A),
             ],
             onTap: onCreate,
           ),
@@ -429,7 +430,7 @@ class _TeamCard extends StatelessWidget {
                       gradient: LinearGradient(
                         colors: [
                           Color(0xFF615FFF),
-                          Color(0xFF9810FA),
+                          Color(0xFF5A189A),
                         ],
                       ),
                       shape: BoxShape.circle,
@@ -465,8 +466,8 @@ class _TeamCard extends StatelessWidget {
                               ),
                             _InfoTag(
                               label: '${members.length} Members',
-                              backgroundColor: const Color(0xFFF4F4F5),
-                              textColor: const Color(0xFF4B5563),
+                              backgroundColor: AppColors.lightGray,
+                              textColor: AppColors.darkPurple,
                             ),
                             _InfoTag(
                               label: allowTeamActions

@@ -126,7 +126,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                         child: const Icon(
                           Icons.mark_email_unread_rounded,
                           size: 36,
-                          color: Color(0xFF5B3DF5),
+                          color: Color(0xFFFF0A1F),
                         ),
                       ),
 
@@ -165,7 +165,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                           email,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
-                            color: Color(0xFF4F39F6),
+                            color: Color(0xFFFF0A1F),
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -188,7 +188,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                           onPressed:
                               _isCheckingVerification ? null : checkVerification,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF4F39F6),
+                            backgroundColor: const Color(0xFFFF0A1F),
                             foregroundColor: Colors.white,
                             minimumSize: const Size.fromHeight(50),
                             shape: RoundedRectangleBorder(
@@ -221,7 +221,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            foregroundColor: const Color(0xFF4F39F6),
+                            foregroundColor: const Color(0xFFFF0A1F),
                           ),
                           child: Text(
                             countdown == 0

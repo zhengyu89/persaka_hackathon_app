@@ -72,9 +72,9 @@ class _AdminAddJudgesScreenState extends State<AdminAddJudgesScreen> {
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            Color(0xFF4F39F6),
-                            Color(0xFF9810FA),
-                            Color(0xFF432DD7),
+                            Color(0xFFFF0A1F),
+                            Color(0xFF5A189A),
+                            Color(0xFF3D0075),
                           ],
                         ),
 
@@ -244,7 +244,7 @@ class _AdminAddJudgesScreenState extends State<AdminAddJudgesScreen> {
                                   style: ElevatedButton.styleFrom(
                                     elevation: 0,
 
-                                    backgroundColor: const Color(0xFFF3F4F6),
+                                    backgroundColor: const Color(0xFF12142B),
 
                                     minimumSize: const Size(
                                       double.infinity,
@@ -474,7 +474,7 @@ class _AdminAddJudgesScreenState extends State<AdminAddJudgesScreen> {
                                   style: ElevatedButton.styleFrom(
                                     elevation: 0,
 
-                                    backgroundColor: const Color(0xFF6D28D9),
+                                    backgroundColor: const Color(0xFF3D0075),
 
                                     minimumSize: const Size(
                                       double.infinity,
@@ -554,7 +554,7 @@ class _AdminAddJudgesScreenState extends State<AdminAddJudgesScreen> {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(18),
 
-              borderSide: const BorderSide(color: Color(0xFF6D28D9), width: 2),
+              borderSide: const BorderSide(color: Color(0xFF3D0075), width: 2),
             ),
           ),
         ),
@@ -668,7 +668,7 @@ class _AdminAddJudgesScreenState extends State<AdminAddJudgesScreen> {
 
                         padding: const EdgeInsets.symmetric(vertical: 16),
 
-                        backgroundColor: const Color(0xFF6D28D9),
+                        backgroundColor: const Color(0xFF3D0075),
 
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(18),
