@@ -31,7 +31,7 @@ class _RegisterSuccessScreenState extends State<RegisterSuccessScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFF),
+      backgroundColor: const Color(0xFFF8F8FB),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -94,7 +94,7 @@ class _RegisterSuccessScreenState extends State<RegisterSuccessScreen> {
                     SizedBox(width: 10),
                     Text(
                       "Redirecting to verification...",
-                      style: TextStyle(color: Colors.deepPurple),
+                      style: TextStyle(color: Color(0xFF3D0075)),
                     ),
                   ],
                 ),

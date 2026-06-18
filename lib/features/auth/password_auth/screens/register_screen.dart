@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/services/email_verification_service.dart';
 import '../../../../core/services/auth_service.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../../../../routes/app_routes.dart';
 import '../../../../shared/widgets/app_input_field.dart';
 import '../../../../shared/widgets/auth_header.dart';
@@ -256,21 +257,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           width: double.infinity,
                           height: 55,
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF4F39F6), Color(0xFF9810FA)],
-                            ),
+                            color: AppColors.persakaRed,
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Center(
-                            child:
-                                isLoading
-                                    ? const CircularProgressIndicator(
-                                      color: Colors.white,
-                                    )
-                                    : const Text(
-                                      'Create Account',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
+                            child: isLoading
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white,
+                                  )
+                                : const Text(
+                                    'Create Account',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
                           ),
                         ),
                       ),
@@ -302,7 +300,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             },
                             child: const Text(
                               'Sign in',
-                              style: TextStyle(color: Color(0xFF4F39F6)),
+                              style: TextStyle(color: Color(0xFFFF0A1F)),
                             ),
                           ),
                         ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/participant_ui.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -90,15 +91,125 @@ class _HeroOverviewCard extends StatelessWidget {
             ),
             child: const Row(
               children: [
-                ParticipantMetricTile(label: 'Hours Left', value: '18'),
+                _CountdownMetricTile(label: 'Hours Left', value: '18'),
                 SizedBox(width: 10),
-                ParticipantMetricTile(label: 'Team Tasks', value: '07'),
+                _LightMetricTile(label: 'Team Tasks', value: '07'),
                 SizedBox(width: 10),
-                ParticipantMetricTile(label: 'Score Rank', value: '#04'),
+                _LightMetricTile(label: 'Score Rank', value: '#04'),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CountdownMetricTile extends StatelessWidget {
+  const _CountdownMetricTile({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.persakaRed.withOpacity(0.18)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              Icons.timer_rounded,
+              color: AppColors.persakaRed,
+              size: 18,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: const TextStyle(
+                color: AppColors.persakaRed,
+                fontSize: 30,
+                fontWeight: FontWeight.w900,
+                height: 1,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LightMetricTile extends StatelessWidget {
+  const _LightMetricTile({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.94),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              value,
+              style: const TextStyle(
+                color: AppColors.darkPurple,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                height: 1.05,
+              ),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

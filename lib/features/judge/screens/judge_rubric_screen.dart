@@ -186,8 +186,10 @@ class JudgeRubricScreen extends StatelessWidget {
                       disabledForegroundColor: const Color(0xFF9CA3AF),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(16),
                       ),
+                      elevation: 3,
+                      shadowColor: ParticipantPalette.primary.withOpacity(0.28),
                     ),
                   ),
                 ),
@@ -424,13 +426,16 @@ class _WeightSummaryCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF7ED),
+                color: ParticipantPalette.warning.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: ParticipantPalette.warning.withOpacity(0.22),
+                ),
               ),
               child: const Text(
                 'Rubric configuration incomplete',
                 style: TextStyle(
-                  color: Color(0xFFC2410C),
+                  color: Color(0xFF9A3412),
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -454,8 +459,11 @@ class _SummaryTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFEEF2FF),
+          color: ParticipantPalette.primary.withOpacity(0.08),
           borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: ParticipantPalette.primary.withOpacity(0.14),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -524,6 +524,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                   ),
+
+                  const SizedBox(height: 16),
+
+                  const _PersakaPoweredByCard(),
                 ],
               ),
             ),
@@ -630,6 +634,75 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: 1.5,
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _PersakaPoweredByCard extends StatelessWidget {
+  const _PersakaPoweredByCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return ParticipantCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Text(
+            'Powered By',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: ParticipantPalette.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: ParticipantPalette.secondary.withOpacity(0.08),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: ParticipantPalette.secondary.withOpacity(0.18),
+              ),
+            ),
+            child: const Center(
+              child: Text(
+                'P',
+                style: TextStyle(
+                  color: ParticipantPalette.secondary,
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'PERSATUAN MAHASISWA SAINS KOMPUTER',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: ParticipantPalette.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'UNIVERSITI TEKNOLOGI MALAYSIA (PERSAKA)',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: ParticipantPalette.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              height: 1.35,
+            ),
+          ),
+        ],
       ),
     );
   }

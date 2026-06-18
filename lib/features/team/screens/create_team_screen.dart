@@ -213,9 +213,9 @@ class _CreateTeamScreenState
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Color(0xFF4F39F6),
-                    Color(0xFF9810FA),
-                    Color(0xFF432DD7),
+                    Color(0xFFFF0A1F),
+                    Color(0xFF5A189A),
+                    Color(0xFF3D0075),
                   ],
                 ),
                 borderRadius: BorderRadius.only(
@@ -464,10 +464,10 @@ class _CreateTeamScreenState
                             const LinearGradient(
                           colors: [
                             Color(
-                                0xFF4F39F6),
+                                0xFFFF0A1F),
 
                             Color(
-                                0xFF9810FA),
+                                0xFF5A189A),
                           ],
                         ),
 

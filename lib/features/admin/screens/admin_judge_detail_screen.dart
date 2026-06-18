@@ -1,31 +1,43 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-Map<String, Map<String, dynamic>> _hackathonJudgeAssignmentMap(
+Map<String, List<Map<String, dynamic>>> _hackathonJudgeAssignmentMap(
   Object? rawAssignments,
 ) {
   if (rawAssignments is Map) {
-    return rawAssignments.map((key, value) {
-      return MapEntry(
-        key.toString(),
-        value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{},
-      );
+    final normalized = <String, List<Map<String, dynamic>>>{};
+
+    rawAssignments.forEach((key, value) {
+      final teamKey = key.toString();
+
+      if (value is List) {
+        normalized[teamKey] = value
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      } else if (value is Map) {
+        normalized[teamKey] = [Map<String, dynamic>.from(value)];
+      }
     });
+
+    return normalized;
   }
 
   if (rawAssignments is List) {
-    final normalized = <String, Map<String, dynamic>>{};
+    final normalized = <String, List<Map<String, dynamic>>>{};
+
     for (final assignment in rawAssignments.whereType<Map>()) {
       final data = Map<String, dynamic>.from(assignment);
       final teamCode = (data["teamCode"] ?? data["teamId"] ?? "").toString();
       if (teamCode.isNotEmpty) {
-        normalized[teamCode] = data;
+        normalized.putIfAbsent(teamCode, () => []).add(data);
       }
     }
+
     return normalized;
   }
 
-  return const <String, Map<String, dynamic>>{};
+  return const <String, List<Map<String, dynamic>>>{};
 }
 
 class AdminJudgesDetailScreen extends StatefulWidget {
@@ -75,6 +87,10 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
         final judgeAssignments = _hackathonJudgeAssignmentMap(
           data["judgeAssignments"],
         );
+        
+        // Read judgesPerTeam from hackathon settings
+        final judgesPerTeam = 
+            (data["judgingRules"]?["judgesPerTeam"] as num?)?.toInt() ?? 1;
 
         List<Map<String, dynamic>> teams = [];
 
@@ -88,32 +104,32 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
           if (teamDoc.exists) {
             final teamData = teamDoc.data()!;
 
-            final assignment =
+            final assignmentList =
                 judgeAssignments[teamDoc.id] ??
                 judgeAssignments[(teamData["teamCode"] ?? teamDoc.id)
-                    .toString()];
+                    .toString()] ?? [];
+            
+            final int judgeCount = assignmentList.length;
+            final bool hasJudges = judgeCount > 0;
+            final bool isFull = judgeCount >= judgesPerTeam;
 
             teams.add({
               "id": teamDoc.id,
-
               "name": teamData["teamName"] ?? "",
-
               "teamCode": teamData["teamCode"] ?? "",
-
-              "judgeAssigned": assignment != null,
-
-              "judgeId": assignment?["judgeId"],
-
-              "judgeName": assignment?["judgeName"],
+              "judgeAssigned": hasJudges,
+              "judgeCount": judgeCount,
+              "judgesPerTeam": judgesPerTeam,
+              "isFull": isFull,
+              "judges": assignmentList,
             });
           }
         }
 
         loadedHackathons.add({
           "id": hackathonDoc.id,
-
           "name": data["title"] ?? "Hackathon",
-
+          "judgesPerTeam": judgesPerTeam,
           "teams": teams,
         });
       }
@@ -150,17 +166,24 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
 
       final hackathonData = hackathonDoc.data() ?? {};
 
-      Map<String, Map<String, dynamic>> judgeAssignments =
+      Map<String, List<Map<String, dynamic>>> judgeAssignments =
           _hackathonJudgeAssignmentMap(hackathonData["judgeAssignments"]);
 
-      judgeAssignments.removeWhere(
-        (teamCode, scopedAssignment) =>
-            scopedAssignment["judgeId"] == widget.judge["id"] &&
-            (scopedAssignment["hackathonId"] ?? assignment["hackathonId"]) ==
-                assignment["hackathonId"],
-      );
+      // Remove this judge from all teams for this hackathon
+      judgeAssignments.forEach((teamCode, assignments) {
+        final filtered = assignments
+            .where((a) =>
+                a["judgeId"] != widget.judge["id"] ||
+                (a["hackathonId"] ?? assignment["hackathonId"]) !=
+                    assignment["hackathonId"])
+            .toList();
+        judgeAssignments[teamCode] = filtered;
+      });
+      
+      // Remove teams with no judges
+      judgeAssignments.removeWhere((_, assignments) => assignments.isEmpty);
 
-      await hackathonRef.update({"judgeAssignments": judgeAssignments.values.toList()});
+      await hackathonRef.update({"judgeAssignments": judgeAssignments});
 
       ////////////////////////////////////////////////////////
       /// REMOVE USER ASSIGNMENT
@@ -327,7 +350,7 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
 
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF5B3FFF),
+                        backgroundColor: const Color(0xFFFF0A1F),
                       ),
 
                       onPressed: () async {
@@ -343,15 +366,20 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
 
                         final hackathonData = hackathonDoc.data() ?? {};
 
-                        Map<String, Map<String, dynamic>> judgeAssignments =
+                        Map<String, List<Map<String, dynamic>>> judgeAssignments =
                             _hackathonJudgeAssignmentMap(
                               hackathonData["judgeAssignments"],
                             );
 
-                        judgeAssignments.removeWhere(
-                          (teamCode, scopedAssignment) =>
-                              scopedAssignment["judgeId"] == widget.judge["id"],
-                        );
+                        // Remove this judge from all teams
+                        judgeAssignments.forEach((teamCode, assignments) {
+                          final filtered = assignments
+                              .where((a) => a["judgeId"] != widget.judge["id"])
+                              .toList();
+                          judgeAssignments[teamCode] = filtered;
+                        });
+                        
+                        judgeAssignments.removeWhere((_, assignments) => assignments.isEmpty);
 
                         //////////////////////////////////////////////////////
                         /// ADD NEW TEAM ASSIGNMENT
@@ -359,22 +387,19 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
 
                         for (var team in editableTeams) {
                           final teamCode = team["teamId"].toString();
+                          
+                          // Initialize or get existing judges for this team
+                          judgeAssignments.putIfAbsent(teamCode, () => []);
 
-                          judgeAssignments[teamCode] = {
+                          judgeAssignments[teamCode]!.add({
                             "judgeId": widget.judge["id"],
-
                             "judgeName": widget.judge["name"],
-
                             "teamId": teamCode,
-
                             "teamName": team["teamName"],
-
                             "hackathonId": assignment["hackathonId"],
-
                             "hackathonName": assignment["hackathon"],
-
                             "assignedAt": Timestamp.now(),
-                          };
+                          });
                         }
 
                         //////////////////////////////////////////////////////
@@ -382,7 +407,7 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
                         //////////////////////////////////////////////////////
 
                         await hackathonRef.update({
-                          "judgeAssignments": judgeAssignments.values.toList(),
+                          "judgeAssignments": judgeAssignments,
                         });
 
                         //////////////////////////////////////////////////////
@@ -501,7 +526,7 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
                               border: Border.all(
                                 color:
                                     isSelected
-                                        ? const Color(0xFF5B3FFF)
+                                        ? const Color(0xFFFF0A1F)
                                         : Colors.transparent,
 
                                 width: 2,
@@ -551,7 +576,7 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
                                           child: const Icon(
                                             Icons.emoji_events_outlined,
 
-                                            color: Color(0xFF7C3AED),
+                                            color: Color(0xFF5A189A),
                                           ),
                                         ),
 
@@ -610,8 +635,11 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
                                                     e["teamId"] == team["id"],
                                               );
 
-                                          final bool alreadyAssigned =
-                                              team["judgeAssigned"] == true;
+                                          final int judgeCount = 
+                                              team["judgeCount"] as int? ?? 0;
+                                          final int judgesPerTeam = 
+                                              team["judgesPerTeam"] as int? ?? 1;
+                                          final bool isFull = judgeCount >= judgesPerTeam;
 
                                           return Container(
                                             margin: const EdgeInsets.only(
@@ -672,13 +700,17 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
 
                                                             decoration: BoxDecoration(
                                                               color:
-                                                                  alreadyAssigned
+                                                                  isFull
                                                                       ? const Color(
-                                                                        0xFFDCFCE7,
+                                                                        0xFFFFEBEE,
                                                                       )
-                                                                      : const Color(
-                                                                        0xFFEDE9FE,
-                                                                      ),
+                                                                      : judgeCount > 0
+                                                                        ? const Color(
+                                                                          0xFFDCFCE7,
+                                                                        )
+                                                                        : const Color(
+                                                                          0xFFEDE9FE,
+                                                                        ),
 
                                                               borderRadius:
                                                                   BorderRadius.circular(
@@ -687,19 +719,25 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
                                                             ),
 
                                                             child: Text(
-                                                              alreadyAssigned
-                                                                  ? "Assigned"
-                                                                  : "Available",
+                                                              isFull
+                                                                  ? "Max judges reached"
+                                                                  : judgeCount > 0
+                                                                    ? "$judgeCount/$judgesPerTeam"
+                                                                    : "Available",
 
                                                               style: TextStyle(
                                                                 color:
-                                                                    alreadyAssigned
+                                                                    isFull
                                                                         ? const Color(
-                                                                          0xFF166534,
+                                                                          0xFFC62828,
                                                                         )
-                                                                        : const Color(
-                                                                          0xFF5B3FFF,
-                                                                        ),
+                                                                        : judgeCount > 0
+                                                                          ? const Color(
+                                                                            0xFF166534,
+                                                                          )
+                                                                          : const Color(
+                                                                            0xFFFF0A1F,
+                                                                          ),
 
                                                                 fontSize: 11,
 
@@ -709,26 +747,6 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
                                                               ),
                                                             ),
                                                           ),
-
-                                                          if (alreadyAssigned)
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets.only(
-                                                                    left: 8,
-                                                                  ),
-
-                                                              child: Text(
-                                                                "Judge: ${team["judgeName"] ?? ""}",
-
-                                                                style: const TextStyle(
-                                                                  fontSize: 12,
-
-                                                                  color:
-                                                                      Colors
-                                                                          .grey,
-                                                                ),
-                                                              ),
-                                                            ),
                                                         ],
                                                       ),
                                                     ],
@@ -742,24 +760,20 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
                                                   value: alreadySelected,
 
                                                   activeColor: const Color(
-                                                    0xFF5B3FFF,
+                                                    0xFFFF0A1F,
                                                   ),
 
                                                   onChanged: (_) {
-                                                    if (alreadyAssigned &&
-                                                        team["judgeId"] !=
-                                                            widget
-                                                                .judge["id"]) {
+                                                    if (isFull && !alreadySelected) {
                                                       ScaffoldMessenger.of(
                                                         context,
                                                       ).showSnackBar(
                                                         const SnackBar(
                                                           content: Text(
-                                                            "This team already has a judge assigned",
+                                                            "Maximum judges reached for this team",
                                                           ),
                                                         ),
                                                       );
-
                                                       return;
                                                     }
 
@@ -774,9 +788,7 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
                                                       } else {
                                                         selectedTeams.add({
                                                           "teamId": team["id"],
-
-                                                          "teamName":
-                                                              team["name"],
+                                                          "teamName": team["name"],
                                                         });
                                                       }
                                                     });
@@ -804,7 +816,7 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
 
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF5B3FFF),
+                        backgroundColor: const Color(0xFFFF0A1F),
                       ),
 
                       onPressed: () async {
@@ -813,7 +825,7 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
                         if (selectedTeams.isEmpty) return;
 
                         //////////////////////////////////////////////////////
-                        /// UPDATE HACKATHON JUDGE ASSIGNMENTS
+                        /// VALIDATE judgesPerTeam LIMIT
                         //////////////////////////////////////////////////////
 
                         final hackathonRef = FirebaseFirestore.instance
@@ -823,39 +835,67 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
                         final hackathonDoc = await hackathonRef.get();
 
                         final hackathonData = hackathonDoc.data() ?? {};
+                        final judgesPerTeam = 
+                            (hackathonData["judgingRules"]?["judgesPerTeam"] as num?)?.toInt() ?? 1;
 
-                        Map<String, Map<String, dynamic>> judgeAssignments =
+                        Map<String, List<Map<String, dynamic>>> judgeAssignments =
                             _hackathonJudgeAssignmentMap(
                               hackathonData["judgeAssignments"],
                             );
 
-                        judgeAssignments.removeWhere(
-                          (teamCode, assignment) =>
-                              assignment["judgeId"] == widget.judge["id"],
-                        );
-
+                        // Check if any team would exceed the limit
                         for (var team in selectedTeams) {
                           final teamCode = team["teamId"].toString();
+                          final currentJudges = judgeAssignments[teamCode] ?? [];
+                          final countWithoutThisJudge = currentJudges
+                              .where((a) => a["judgeId"] != widget.judge["id"])
+                              .length;
+                          
+                          if (countWithoutThisJudge >= judgesPerTeam) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Team ${team["teamName"]} has reached the maximum of $judgesPerTeam judges',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+                        }
 
-                          judgeAssignments[teamCode] = {
+                        //////////////////////////////////////////////////////
+                        /// UPDATE HACKATHON JUDGE ASSIGNMENTS
+                        //////////////////////////////////////////////////////
+
+                        // Remove this judge from all teams
+                        judgeAssignments.forEach((teamCode, assignments) {
+                          final filtered = assignments
+                              .where((a) => a["judgeId"] != widget.judge["id"])
+                              .toList();
+                          judgeAssignments[teamCode] = filtered;
+                        });
+                        
+                        judgeAssignments.removeWhere((_, assignments) => assignments.isEmpty);
+
+                        // Add this judge to selected teams
+                        for (var team in selectedTeams) {
+                          final teamCode = team["teamId"].toString();
+                          judgeAssignments.putIfAbsent(teamCode, () => []);
+
+                          judgeAssignments[teamCode]!.add({
                             "judgeId": widget.judge["id"],
-
                             "judgeName": widget.judge["name"],
-
                             "teamId": teamCode,
-
                             "teamName": team["teamName"],
-
                             "hackathonId": selectedHackathonId,
-
                             "hackathonName": selectedHackathonName,
-
                             "assignedAt": Timestamp.now(),
-                          };
+                          });
                         }
 
                         await hackathonRef.update({
-                          "judgeAssignments": judgeAssignments.values.toList(),
+                          "judgeAssignments": judgeAssignments,
                         });
 
                         //////////////////////////////////////////////////////
@@ -913,10 +953,10 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
     final judge = widget.judge;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F5F9),
+      backgroundColor: const Color(0xFFF8F8FB),
 
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: const Color(0xFF5B3FFF),
+        backgroundColor: const Color(0xFFFF0A1F),
 
         onPressed: showAssignHackathonSheet,
 
@@ -940,11 +980,11 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Color(0xFF4F39F6),
+                    Color(0xFFFF0A1F),
 
-                    Color(0xFF9810FA),
+                    Color(0xFF5A189A),
 
-                    Color(0xFF432DD7),
+                    Color(0xFF3D0075),
                   ],
                 ),
 
@@ -1002,7 +1042,7 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
                               .join(),
 
                           style: const TextStyle(
-                            color: Color(0xFF5B3FFF),
+                            color: Color(0xFFFF0A1F),
 
                             fontSize: 30,
 
@@ -1030,7 +1070,7 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
                       Text(
                         judge["email"],
 
-                        style: const TextStyle(color: Colors.white70),
+                        style: const TextStyle(color: Colors.white),
                       ),
                     ],
                   ),
@@ -1107,7 +1147,7 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
                                 icon: const Icon(
                                   Icons.edit,
 
-                                  color: Color(0xFF5B3FFF),
+                                  color: Color(0xFFFF0A1F),
                                 ),
                               ),
 
@@ -1155,7 +1195,7 @@ class _AdminJudgesDetailScreenState extends State<AdminJudgesDetailScreen> {
                                       teamName,
 
                                       style: const TextStyle(
-                                        color: Color(0xFF6D28D9),
+                                        color: Color(0xFF3D0075),
 
                                         fontWeight: FontWeight.w600,
                                       ),

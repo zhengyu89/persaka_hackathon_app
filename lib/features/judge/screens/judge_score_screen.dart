@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../../shared/utils/judge_assignment_utils.dart';
 import '../../../shared/widgets/participant_ui.dart';
 import '../models/judge_rubric_models.dart';
 
@@ -86,24 +87,10 @@ class _JudgeScoreScreenState extends State<JudgeScoreScreen> {
 
         String teamDisplayName = widget.teamName ?? widget.teamId;
         if (isAnonymous) {
-          final rawAssignmentsObj = hackathonData['judgeAssignments'];
-          final judgeAssignments = <Map<String, dynamic>>[];
-          if (rawAssignmentsObj is List) {
-            for (final item in rawAssignmentsObj) {
-              if (item is Map) {
-                judgeAssignments.add(Map<String, dynamic>.from(item));
-              }
-            }
-          } else if (rawAssignmentsObj is Map) {
-            for (final value in rawAssignmentsObj.values) {
-              if (value is Map) {
-                judgeAssignments.add(Map<String, dynamic>.from(value));
-              }
-            }
-          }
-          final assignedTeams = judgeAssignments
+          final assignedTeams = normalizeJudgeAssignments(hackathonData['judgeAssignments'])
               .where((assignment) => assignment['judgeId'] == judgeUid)
-              .map((assignment) => assignment['teamId'].toString())
+              .map((assignment) => assignment['teamId']?.toString() ?? '')
+              .where((teamId) => teamId.isNotEmpty)
               .toSet()
               .toList()
             ..sort();

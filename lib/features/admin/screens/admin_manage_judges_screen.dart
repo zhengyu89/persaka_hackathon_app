@@ -1,15 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/constants/app_colors.dart';
 import 'admin_add_judges_screen.dart';
 import 'admin_judge_detail_screen.dart';
 
 List<Map<String, dynamic>> _hackathonJudgeAssignments(Object? rawAssignments) {
+  Map<String, dynamic> withTeamKey(Map assignment, String teamKey) {
+    final normalized = Map<String, dynamic>.from(assignment);
+    normalized.putIfAbsent("teamId", () => teamKey);
+    normalized.putIfAbsent("teamCode", () => teamKey);
+    return normalized;
+  }
+
   if (rawAssignments is Map) {
-    return rawAssignments.values
-        .whereType<Map>()
-        .map((assignment) => Map<String, dynamic>.from(assignment))
-        .toList();
+    final normalized = <Map<String, dynamic>>[];
+
+    rawAssignments.forEach((key, value) {
+      final teamKey = key.toString();
+
+      if (value is List) {
+        for (final assignment in value.whereType<Map>()) {
+          normalized.add(withTeamKey(assignment, teamKey));
+        }
+      } else if (value is Map) {
+        normalized.add(withTeamKey(value, teamKey));
+      }
+    });
+
+    return normalized;
   }
 
   if (rawAssignments is List) {
@@ -72,7 +91,8 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
       /// MAP FOR TEAM COUNT
       //////////////////////////////////////////////////////////
 
-      Map<String, int> judgeTeamCounts = {};
+      final Map<String, Set<String>> judgeAssignedTeams = {};
+      final Map<String, List<String>> judgeAssignmentLabels = {};
 
       //////////////////////////////////////////////////////////
       /// LOOP HACKATHONS
@@ -96,7 +116,31 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
             continue;
           }
 
-          judgeTeamCounts[judgeId] = (judgeTeamCounts[judgeId] ?? 0) + 1;
+          final teamId =
+              (assignment["teamId"] ??
+                      assignment["teamCode"] ??
+                      assignment["teamName"] ??
+                      "")
+                  .toString();
+          final assignmentKey =
+              teamId.isEmpty ? "${hackathon.id}-${assignment.hashCode}" : teamId;
+
+          judgeAssignedTeams.putIfAbsent(judgeId, () => <String>{});
+          judgeAssignedTeams[judgeId]!.add("${hackathon.id}:$assignmentKey");
+
+          final teamName =
+              (assignment["teamName"] ?? assignment["teamCode"] ?? teamId)
+                  .toString();
+          final hackathonName =
+              (assignment["hackathonName"] ?? data["title"] ?? "Hackathon")
+                  .toString();
+          final label =
+              teamName.isEmpty ? hackathonName : "$teamName - $hackathonName";
+
+          judgeAssignmentLabels.putIfAbsent(judgeId, () => <String>[]);
+          if (!judgeAssignmentLabels[judgeId]!.contains(label)) {
+            judgeAssignmentLabels[judgeId]!.add(label);
+          }
         }
       }
 
@@ -112,7 +156,7 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
             /// TEAM COUNT
             ////////////////////////////////////////////////////////
 
-            final int assignedCount = judgeTeamCounts[doc.id] ?? 0;
+            final int assignedCount = judgeAssignedTeams[doc.id]?.length ?? 0;
 
             ////////////////////////////////////////////////////////
             /// ASSIGNMENTS
@@ -144,7 +188,9 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
 
               "assignments": assignments,
 
-              "color": const Color(0xFF7C3AED),
+              "assignmentLabels": judgeAssignmentLabels[doc.id] ?? [],
+
+              "color": const Color(0xFF5A189A),
             };
           }).toList();
     } catch (e) {
@@ -165,6 +211,12 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
     super.initState();
 
     loadJudges();
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
   }
 
   ////////////////////////////////////////////////////////////
@@ -197,7 +249,7 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
         judges.where((judge) => judge["teamsAssigned"] > 0).length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: AppColors.backgroundLight,
 
       body: SafeArea(
         child: Column(
@@ -210,18 +262,28 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
 
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
 
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                   colors: [
-                    Color(0xFFFE9A00),
-
-                    Color(0xFFFF6900),
-
-                    Color(0xFFE17100),
+                    AppColors.persakaRed,
+                    AppColors.accentPurple,
+                    AppColors.darkPurple,
+                    AppColors.navy,
                   ],
                 ),
-
-                borderRadius: BorderRadius.only(
+                border: Border(
+                  bottom: BorderSide(color: Colors.white.withOpacity(0.12)),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.persakaRed.withOpacity(0.20),
+                    blurRadius: 34,
+                    offset: const Offset(0, 18),
+                  ),
+                ],
+                borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(32),
 
                   bottomRight: Radius.circular(32),
@@ -241,6 +303,9 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(.18),
                           borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.16),
+                          ),
                         ),
                         child: const Icon(
                           Icons.arrow_back_rounded,
@@ -263,6 +328,8 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                       fontSize: 28,
 
                       fontWeight: FontWeight.bold,
+
+                      fontFamily: 'Poppins',
                     ),
                   ),
 
@@ -275,7 +342,7 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                     "${judges.length} examiners registered",
 
                     style: const TextStyle(
-                      color: Color(0xFFFFF3C6),
+                      color: Colors.white,
 
                       fontSize: 14,
                     ),
@@ -337,13 +404,15 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                       height: 56,
 
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppColors.panel,
 
                         borderRadius: BorderRadius.circular(18),
 
+                        border: Border.all(color: AppColors.glassBorder),
+
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(.04),
+                            color: AppColors.persakaRed.withOpacity(.10),
 
                             blurRadius: 10,
 
@@ -358,12 +427,12 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                         decoration: InputDecoration(
                           hintText: "Search judges...",
 
-                          hintStyle: TextStyle(color: Colors.grey.shade500),
+                          hintStyle: const TextStyle(color: AppColors.subtleText),
 
-                          prefixIcon: Icon(
+                          prefixIcon: const Icon(
                             Icons.search,
 
-                            color: Colors.grey.shade600,
+                            color: AppColors.persakaRed,
                           ),
 
                           border: InputBorder.none,
@@ -372,6 +441,8 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                             vertical: 16,
                           ),
                         ),
+
+                        style: const TextStyle(color: AppColors.textPrimary),
 
                         onChanged: (_) {
                           setState(() {});
@@ -407,12 +478,20 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
 
                       decoration: BoxDecoration(
                         color: Colors.white,
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.panel.withOpacity(0.90),
+                            AppColors.navy.withOpacity(0.88),
+                          ],
+                        ),
 
                         borderRadius: BorderRadius.circular(18),
 
+                        border: Border.all(color: Colors.white.withOpacity(0.10)),
+
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(.04),
+                            color: AppColors.persakaRed.withOpacity(.10),
 
                             blurRadius: 10,
 
@@ -433,7 +512,7 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                               : const Icon(
                                 Icons.refresh_rounded,
 
-                                color: Color(0xFF5B3FFF),
+                                color: Color(0xFFFF0A1F),
                               ),
                     ),
                   ),
@@ -469,10 +548,22 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
 
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [Color(0xFF5B3FFF), Color(0xFF7C3AED)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.persakaRed,
+                            AppColors.accentPurple,
+                          ],
                         ),
 
                         borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.persakaRed.withOpacity(0.28),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
                       ),
 
                       child: const Icon(
@@ -496,7 +587,12 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                   isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : filteredJudges.isEmpty
-                      ? const Center(child: Text("No judges found"))
+                      ? const Center(
+                        child: Text(
+                          "No judges found",
+                          style: TextStyle(color: AppColors.mutedText),
+                        ),
+                      )
                       : ListView.builder(
                         padding: const EdgeInsets.all(16),
 
@@ -534,17 +630,21 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                               padding: const EdgeInsets.all(18),
 
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: AppColors.panel,
 
-                                borderRadius: BorderRadius.circular(24),
+                                borderRadius: BorderRadius.circular(22),
+
+                                border: Border.all(
+                                  color: AppColors.glassBorder,
+                                ),
 
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(.05),
+                                    color: AppColors.softShadow,
 
-                                    blurRadius: 10,
+                                    blurRadius: 22,
 
-                                    offset: const Offset(0, 4),
+                                    offset: const Offset(0, 12),
                                   ),
                                 ],
                               ),
@@ -561,24 +661,30 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
 
                                     decoration: BoxDecoration(
                                       gradient: const LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
                                         colors: [
-                                          Color(0xFF5B3FFF),
+                                          AppColors.persakaRed,
 
-                                          Color(0xFF7C3AED),
+                                          AppColors.accentPurple,
                                         ],
                                       ),
 
                                       borderRadius: BorderRadius.circular(18),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: AppColors.persakaRed
+                                              .withOpacity(0.24),
+                                          blurRadius: 16,
+                                          offset: const Offset(0, 8),
+                                        ),
+                                      ],
                                     ),
 
                                     alignment: Alignment.center,
 
                                     child: Text(
-                                      judge["name"]
-                                          .split(" ")
-                                          .take(2)
-                                          .map((e) => e[0])
-                                          .join(),
+                                      _judgeInitials(judge["name"].toString()),
 
                                       style: const TextStyle(
                                         color: Colors.white,
@@ -605,19 +711,34 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                                           judge["name"],
 
                                           style: const TextStyle(
+                                            color: AppColors.textPrimary,
+
                                             fontWeight: FontWeight.bold,
 
                                             fontSize: 16,
+
+                                            fontFamily: 'Poppins',
                                           ),
                                         ),
 
                                         const SizedBox(height: 6),
 
+                                        _JudgeAssignmentSummary(
+                                          assignedCount:
+                                              (judge["teamsAssigned"] as int?) ??
+                                              0,
+                                          labels: List<String>.from(
+                                            judge["assignmentLabels"] ?? [],
+                                          ),
+                                        ),
+
+                                        const SizedBox(height: 8),
+
                                         Text(
                                           judge["email"],
 
-                                          style: TextStyle(
-                                            color: Colors.grey.shade600,
+                                          style: const TextStyle(
+                                            color: AppColors.subtleText,
 
                                             fontSize: 13,
                                           ),
@@ -633,10 +754,15 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                                           ),
 
                                           decoration: BoxDecoration(
-                                            color: const Color(0xFFF3F0FF),
+                                            color: AppColors.accentPurple
+                                                .withOpacity(0.10),
 
                                             borderRadius: BorderRadius.circular(
                                               20,
+                                            ),
+                                            border: Border.all(
+                                              color: AppColors.accentPurple
+                                                  .withOpacity(0.18),
                                             ),
                                           ),
 
@@ -644,7 +770,7 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                                             judge["specialization"],
 
                                             style: const TextStyle(
-                                              color: Color(0xFF7C3AED),
+                                              color: AppColors.darkPurple,
 
                                               fontWeight: FontWeight.w600,
 
@@ -665,7 +791,7 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
 
                                               size: 15,
 
-                                              color: Colors.grey.shade600,
+                                              color: AppColors.persakaRed,
                                             ),
 
                                             const SizedBox(width: 5),
@@ -674,7 +800,7 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                                               "${judge["teamsAssigned"]} teams assigned",
 
                                               style: TextStyle(
-                                                color: Colors.grey.shade700,
+                                                color: AppColors.mutedText,
 
                                                 fontSize: 12,
                                               ),
@@ -696,7 +822,7 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                                                         ? const Color(
                                                           0xFF00C950,
                                                         )
-                                                        : Colors.orange,
+                                                        : AppColors.warning,
 
                                                 shape: BoxShape.circle,
                                               ),
@@ -708,7 +834,7 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
                                               judge["status"],
 
                                               style: TextStyle(
-                                                color: Colors.grey.shade700,
+                                                color: AppColors.mutedText,
 
                                                 fontSize: 12,
                                               ),
@@ -740,9 +866,10 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
       padding: const EdgeInsets.symmetric(vertical: 16),
 
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(.18),
+        color: Colors.white,
 
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.24)),
       ),
 
       child: Column(
@@ -751,7 +878,7 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
             number,
 
             style: const TextStyle(
-              color: Colors.white,
+              color: AppColors.textPrimary,
 
               fontWeight: FontWeight.bold,
 
@@ -764,7 +891,85 @@ class _AdminManageJudgesScreenState extends State<AdminManageJudgesScreen> {
           Text(
             title,
 
-            style: const TextStyle(color: Color(0xFFFFF3C6), fontSize: 12),
+            style: const TextStyle(
+              color: AppColors.mutedText,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _judgeInitials(String name) {
+  final parts = name
+      .trim()
+      .split(RegExp(r"\s+"))
+      .where((part) => part.isNotEmpty)
+      .toList();
+
+  if (parts.isEmpty) {
+    return "?";
+  }
+
+  return parts.take(2).map((part) => part[0].toUpperCase()).join();
+}
+
+class _JudgeAssignmentSummary extends StatelessWidget {
+  const _JudgeAssignmentSummary({
+    required this.assignedCount,
+    required this.labels,
+  });
+
+  final int assignedCount;
+  final List<String> labels;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAssignments = assignedCount > 0;
+    final preview =
+        labels.isEmpty ? "No teams assigned yet" : labels.take(2).join(" / ");
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: hasAssignments ? AppColors.purpleTint : AppColors.lightGray,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color:
+              hasAssignments
+                  ? AppColors.darkPurple.withOpacity(0.14)
+                  : AppColors.glassBorder,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            hasAssignments
+                ? Icons.assignment_turned_in_rounded
+                : Icons.assignment_outlined,
+            size: 16,
+            color: hasAssignments ? AppColors.darkPurple : AppColors.darkGray,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              hasAssignments
+                  ? "$assignedCount assigned - $preview"
+                  : "0 assigned - $preview",
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color:
+                    hasAssignments ? AppColors.textPrimary : AppColors.darkGray,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                height: 1.25,
+              ),
+            ),
           ),
         ],
       ),

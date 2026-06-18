@@ -40,7 +40,7 @@ class WelcomeScreen extends StatelessWidget {
                 const Text(
                   "The all-in-one platform for university hackathons",
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: Colors.white),
                 ),
 
                 const SizedBox(height: 30),
@@ -67,7 +67,7 @@ class WelcomeScreen extends StatelessWidget {
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
-                    foregroundColor: Colors.deepPurple,
+                    foregroundColor: Color(0xFF3D0075),
                     minimumSize: const Size(double.infinity, 50),
                   ),
                   onPressed: () {

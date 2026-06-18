@@ -6,9 +6,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/hackathon_cover.dart';
 import '../../submit/models/submission_models.dart';
 import '../../submit/utils/submission_validators.dart';
+import 'admin_judge_scores_screen.dart';
 import 'admin_manage_judges_screen.dart';
 
 String _formatDate(DateTime? date) {
@@ -83,7 +85,7 @@ class _AdminManageHackathonsScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: AppColors.backgroundLight,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(
@@ -91,7 +93,7 @@ class _AdminManageHackathonsScreenState
             MaterialPageRoute(builder: (_) => const AdminAddHackathonScreen()),
           );
         },
-        backgroundColor: const Color(0xFF4F39F6),
+        backgroundColor: AppColors.persakaRed,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add Hackathon'),
@@ -115,19 +117,18 @@ class _AdminManageHackathonsScreenState
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF4F39F6),
-                        Color(0xFF9810FA),
-                        Color(0xFF432DD7),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.vertical(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.vertical(
                       bottom: Radius.circular(34),
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 18,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,13 +154,13 @@ class _AdminManageHackathonsScreenState
                               vertical: 8,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.16),
+                              color: AppColors.lightGray,
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
                               '${hackathons.length} Live',
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: Color(0xFF111827),
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -167,19 +168,19 @@ class _AdminManageHackathonsScreenState
                         ],
                       ),
                       const SizedBox(height: 22),
-                      const Text(
+                      Text(
                         'Manage Hackathons',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           fontSize: 28,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'Create hackathons, configure participant Google Forms, and keep organiser review links ready for judges.',
                         style: TextStyle(
-                          color: Color(0xFFEAE7FF),
+                          color: AppColors.darkPurple.withOpacity(0.9),
                           fontSize: 14,
                           height: 1.45,
                         ),
@@ -266,7 +267,7 @@ class _HackathonSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
   ) {
     return SizedBox.expand(
       child: Container(
-        color: const Color(0xFFF3F4F6),
+        color: const Color(0xFFF8F8FB),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         alignment: Alignment.center,
         child: child,
@@ -529,7 +530,7 @@ class _AdminAddHackathonScreenState extends State<AdminAddHackathonScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: const Color(0xFFF8F8FB),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: const Color(0xFF111827),
@@ -767,7 +768,7 @@ class _AdminAddHackathonScreenState extends State<AdminAddHackathonScreen> {
                         : 'Publish Hackathon',
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4F39F6),
+                    backgroundColor: const Color(0xFFFF0A1F),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -939,6 +940,22 @@ class _HackathonAdminCard extends StatelessWidget {
                   },
                 ),
                 _SettingsSheetItem(
+                  icon: Icons.bar_chart_rounded,
+                  label: 'View Judge Scores',
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AdminJudgeScoresScreen(
+                          hackathonId: hackathon.id,
+                          hackathonName: hackathon.title,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                _SettingsSheetItem(
                   icon: Icons.delete_outline_rounded,
                   label: 'Delete Hackathon',
                   color: const Color(0xFFDC2626),
@@ -996,7 +1013,7 @@ class _HackathonAdminCard extends StatelessWidget {
                         padding: EdgeInsets.all(10),
                         child: Icon(
                           Icons.more_vert_rounded,
-                          color: Color(0xFF4F39F6),
+                          color: Color(0xFFFF0A1F),
                         ),
                       ),
                     ),
@@ -1056,7 +1073,7 @@ class _HackathonAdminCard extends StatelessWidget {
                   child: Text(
                     '${hackathon.registeredTeams.length} Teams',
                     style: const TextStyle(
-                      color: Color(0xFF4F39F6),
+                      color: Color(0xFFFF0A1F),
                       fontWeight: FontWeight.w700,
                     ),
                   ),

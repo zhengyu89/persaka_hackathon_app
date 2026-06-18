@@ -17,7 +17,7 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   static final RegExp _emailPattern = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
   static const LinearGradient _primaryGradient = LinearGradient(
-    colors: [Color(0xFF4F39F6), Color(0xFF9810FA)],
+    colors: [Color(0xFFFF0A1F), Color(0xFF5A189A)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -117,7 +117,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: const [
             BoxShadow(
-              color: Color(0x334F39F6),
+              color: Color(0x33FF0A1F),
               blurRadius: 18,
               offset: Offset(0, 10),
             ),
@@ -192,7 +192,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               color: const Color(0xFFEDE9FE),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: const Color(0xFF5B3DF5), size: 18),
+            child: Icon(icon, color: const Color(0xFFFF0A1F), size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -323,7 +323,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
-                                color: Color(0xFF4F39F6),
+                                color: Color(0xFFFF0A1F),
                               ),
                             ),
                             const SizedBox(height: 12),

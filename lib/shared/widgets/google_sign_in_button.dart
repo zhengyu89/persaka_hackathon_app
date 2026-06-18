@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_colors.dart';
+
 class GoogleSignInButton extends StatelessWidget {
   final VoidCallback? onTap;
   final bool isLoading;
@@ -19,9 +21,16 @@ class GoogleSignInButton extends StatelessWidget {
         height: 55,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          color: AppColors.panel,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.glassBorder),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.softShadow,
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -40,16 +49,16 @@ class GoogleSignInButton extends StatelessWidget {
                     (_, _, _) => const Icon(
                       Icons.account_circle_outlined,
                       size: 20,
-                      color: Color(0xFF364153),
+                      color: AppColors.subtleText,
                     ),
               ),
             const SizedBox(width: 12),
             Text(
               isLoading ? 'Connecting...' : 'Continue with Google',
               style: TextStyle(
-                color: Color(0xFF364153),
+                color: AppColors.textPrimary,
                 fontSize: 16,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],

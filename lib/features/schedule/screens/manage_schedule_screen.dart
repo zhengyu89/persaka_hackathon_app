@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/services/schedule_service.dart';
+import '../../../core/constants/app_colors.dart';
 
 class ManageScheduleScreen extends StatefulWidget {
   const ManageScheduleScreen({super.key});
@@ -128,7 +129,7 @@ class _ManageScheduleScreenState extends State<ManageScheduleScreen>
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4F39F6),
+                backgroundColor: const Color(0xFFFF0A1F),
                 foregroundColor: Colors.white,
               ),
               child: const Text('Add'),
@@ -183,7 +184,7 @@ class _ManageScheduleScreenState extends State<ManageScheduleScreen>
               Navigator.pop(context);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4F39F6),
+              backgroundColor: const Color(0xFFFF0A1F),
               foregroundColor: Colors.white,
             ),
             child: const Text('Post'),
@@ -196,17 +197,17 @@ class _ManageScheduleScreenState extends State<ManageScheduleScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF4F39F6),
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.textPrimary,
         title: const Text('Manage Schedule',
             style: TextStyle(fontWeight: FontWeight.w600)),
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white60,
+          indicatorColor: AppColors.persakaRed,
+          labelColor: AppColors.darkPurple,
+          unselectedLabelColor: AppColors.subtleText,
           tabs: const [
             Tab(icon: Icon(Icons.calendar_today), text: 'Schedule'),
             Tab(icon: Icon(Icons.campaign), text: 'Announcements'),
@@ -214,7 +215,7 @@ class _ManageScheduleScreenState extends State<ManageScheduleScreen>
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF4F39F6),
+        backgroundColor: AppColors.persakaRed,
         foregroundColor: Colors.white,
         onPressed: () {
           if (_tabController.index == 0) {
@@ -240,10 +241,10 @@ class _ManageScheduleScreenState extends State<ManageScheduleScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.calendar_today, size: 64, color: Colors.grey),
+                      Icon(Icons.calendar_today, size: 64, color: AppColors.mutedText),
                       SizedBox(height: 16),
                       Text('No schedule yet. Tap + to add!',
-                          style: TextStyle(color: Colors.grey, fontSize: 16)),
+                          style: TextStyle(color: AppColors.mutedText, fontSize: 16)),
                     ],
                   ),
                 );
@@ -276,7 +277,7 @@ class _ManageScheduleScreenState extends State<ManageScheduleScreen>
                           height: 48,
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [Color(0xFF4F39F6), Color(0xFF9810FA)],
+                              colors: [Color(0xFFFF0A1F), Color(0xFF5A189A)],
                             ),
                             borderRadius: BorderRadius.circular(14),
                           ),
@@ -296,8 +297,8 @@ class _ManageScheduleScreenState extends State<ManageScheduleScreen>
                                       fontWeight: FontWeight.w600)),
                               Text(
                                 '${_formatTime(data['startTime'])} - ${_formatTime(data['endTime'])}',
-                                style: const TextStyle(
-                                    fontSize: 12, color: Color(0xFF6A7282)),
+                                    style: const TextStyle(
+                                      fontSize: 12, color: AppColors.mutedText),
                               ),
                               Text(data['location'] ?? '',
                                   style: const TextStyle(
@@ -306,7 +307,7 @@ class _ManageScheduleScreenState extends State<ManageScheduleScreen>
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
+                          icon: const Icon(Icons.delete, color: AppColors.persakaRed),
                           onPressed: () async {
                             await _service.deleteScheduleItem(id);
                           },
@@ -331,10 +332,10 @@ class _ManageScheduleScreenState extends State<ManageScheduleScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.campaign, size: 64, color: Colors.grey),
+                      Icon(Icons.campaign, size: 64, color: AppColors.mutedText),
                       SizedBox(height: 16),
                       Text('No announcements yet. Tap + to post!',
-                          style: TextStyle(color: Colors.grey, fontSize: 16)),
+                          style: TextStyle(color: AppColors.mutedText, fontSize: 16)),
                     ],
                   ),
                 );
@@ -353,7 +354,7 @@ class _ManageScheduleScreenState extends State<ManageScheduleScreen>
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                          color: const Color(0xFF4F39F6).withOpacity(0.2)),
+                          color: AppColors.persakaRed.withOpacity(0.12)),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.05),

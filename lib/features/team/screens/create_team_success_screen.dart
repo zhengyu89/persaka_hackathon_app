@@ -48,7 +48,7 @@ class _CreateTeamSuccessScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: const Color(0xFFF8F8FB),
       body: Column(
         children: [
           Container(
@@ -62,9 +62,9 @@ class _CreateTeamSuccessScreenState
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Color(0xFF4F39F6),
-                  Color(0xFF9810FA),
-                  Color(0xFF432DD7),
+                  Color(0xFFFF0A1F),
+                  Color(0xFF5A189A),
+                  Color(0xFF3D0075),
                 ],
               ),
               borderRadius: BorderRadius.only(
@@ -134,7 +134,7 @@ class _CreateTeamSuccessScreenState
                           gradient: LinearGradient(
                             colors: [
                               Color(0xFF615FFF),
-                              Color(0xFF9810FA),
+                              Color(0xFF5A189A),
                             ],
                           ),
                           shape: BoxShape.circle,
@@ -163,7 +163,7 @@ class _CreateTeamSuccessScreenState
                         TextSpan(
                           text: widget.teamName,
                           style: const TextStyle(
-                            color: Color(0xFF4F39F6),
+                            color: Color(0xFFFF0A1F),
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -209,7 +209,7 @@ class _CreateTeamSuccessScreenState
                             gradient: const LinearGradient(
                               colors: [
                                 Color(0xFF615FFF),
-                                Color(0xFF9810FA),
+                                Color(0xFF5A189A),
                               ],
                             ),
                             borderRadius:
@@ -254,7 +254,7 @@ class _CreateTeamSuccessScreenState
                       Text(
                         'Returning to your team workspace...',
                         style: TextStyle(
-                          color: Color(0xFF4F39F6),
+                          color: Color(0xFFFF0A1F),
                         ),
                       ),
                     ],

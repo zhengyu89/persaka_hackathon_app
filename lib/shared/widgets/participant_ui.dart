@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_colors.dart';
+
 class ParticipantPalette {
-  static const Color pageBackground = Color(0xFFF6F7FB);
-  static const Color surface = Colors.white;
-  static const Color border = Color(0xFFE8EAF3);
-  static const Color textPrimary = Color(0xFF161C2D);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color primary = Color(0xFF4F39F6);
-  static const Color secondary = Color(0xFF9810FA);
-  static const Color tertiary = Color(0xFF432DD7);
-  static const Color success = Color(0xFF16A34A);
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color danger = Color(0xFFEF4444);
+  static const Color pageBackground = AppColors.backgroundLight;
+  static const Color surface = AppColors.glassPanel;
+  static const Color border = Color(0x14000000);
+  static const Color textPrimary = AppColors.textDark;
+  static const Color textSecondary = AppColors.mutedText;
+  static const Color primary = AppColors.persakaRed;
+  static const Color secondary = AppColors.darkPurple;
+  static const Color tertiary = AppColors.accentPurple;
+  static const Color success = AppColors.success;
+  static const Color warning = AppColors.warning;
+  static const Color danger = AppColors.error;
 
   static const LinearGradient headerGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [primary, secondary, tertiary],
+    colors: [primary, tertiary, secondary],
   );
 }
 
@@ -47,11 +49,26 @@ class ParticipantPageScaffold extends StatelessWidget {
           SliverToBoxAdapter(
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 60, 20, 28),
-              decoration: const BoxDecoration(
-                gradient: ParticipantPalette.headerGradient,
-                borderRadius: BorderRadius.vertical(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.persakaRed,
+                    AppColors.accentPurple,
+                    AppColors.darkPurple,
+                  ],
+                ),
+                borderRadius: const BorderRadius.vertical(
                   bottom: Radius.circular(28),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.darkPurple.withOpacity(0.18),
+                    blurRadius: 24,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -70,6 +87,9 @@ class ParticipantPageScaffold extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.18),
                             borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.16),
+                            ),
                           ),
                           child: Icon(icon, color: Colors.white),
                         ),
@@ -80,13 +100,14 @@ class ParticipantPageScaffold extends StatelessWidget {
                             color: Colors.white,
                             fontSize: 28,
                             fontWeight: FontWeight.w700,
+                            fontFamily: 'Poppins',
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           subtitle,
                           style: const TextStyle(
-                            color: Color(0xFFEAE7FF),
+                            color: Colors.white,
                             fontSize: 14,
                             height: 1.45,
                           ),
@@ -127,7 +148,7 @@ class ParticipantHeaderIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final button = Material(
-      color: Colors.white.withOpacity(0.16),
+      color: Colors.white.withOpacity(0.18),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onPressed,
@@ -160,18 +181,19 @@ class ParticipantCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
       margin: const EdgeInsets.only(bottom: 16),
       padding: padding,
       decoration: BoxDecoration(
         color: ParticipantPalette.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: ParticipantPalette.border),
-        boxShadow: const [
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.glassBorder),
+        boxShadow: [
           BoxShadow(
-            color: Color(0x120F172A),
+            color: AppColors.softShadow,
             blurRadius: 18,
-            offset: Offset(0, 10),
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -209,6 +231,7 @@ class ParticipantSectionHeader extends StatelessWidget {
                     color: ParticipantPalette.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
+                    fontFamily: 'Poppins',
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -247,6 +270,7 @@ class ParticipantInfoChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(0.18)),
       ),
       child: Text(
         label,
@@ -276,9 +300,9 @@ class ParticipantMetricTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.18),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white.withOpacity(0.12)),
+          color: AppColors.purpleTint,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.darkPurple.withOpacity(0.12)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -286,15 +310,19 @@ class ParticipantMetricTile extends StatelessWidget {
             Text(
               value,
               style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
+                fontFamily: 'Poppins',
               ),
             ),
             const SizedBox(height: 6),
             Text(
               label,
-              style: const TextStyle(color: Color(0xFFEAE7FF), fontSize: 12),
+              style: const TextStyle(
+                color: AppColors.mutedText,
+                fontSize: 12,
+              ),
             ),
           ],
         ),

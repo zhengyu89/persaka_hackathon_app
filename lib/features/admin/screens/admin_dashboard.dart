@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/constants/app_colors.dart';
 
 import '../../board/screens/board_screen.dart';
 import '../../profile/screens/profile_screen.dart';
@@ -49,7 +50,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: AppColors.backgroundLight,
 
       body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: GlobalBottomNavBar(
@@ -121,14 +122,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
       ),
     );
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: AppColors.backgroundLight,
 
       body: SingleChildScrollView(
         physics: const ClampingScrollPhysics(),
@@ -136,25 +137,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
         child: Column(
           children: [
-            /// PURPLE HEADER
+            /// HEADER
             Container(
               width: double.infinity,
 
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF4F39F6),
-                    Color(0xFF9810FA),
-                    Color(0xFF432DD7),
-                  ],
-                ),
-
-                borderRadius: BorderRadius.only(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(34),
                   bottomRight: Radius.circular(34),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
               ),
 
               child: SafeArea(
@@ -169,41 +168,48 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
-                              Text(
-                                "Admin Dashboard 👨‍💼",
-                                style: TextStyle(
-                                  color: Color(0xFFC6D2FF),
-                                  fontSize: 14,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Admin Dashboard",
+                                  style: TextStyle(
+                                    color: AppColors.darkPurple,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
-                              ),
 
-                              SizedBox(height: 6),
+                                const SizedBox(height: 6),
 
-                              Text(
-                                "Spring Hack 2026",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w800,
+                                const Text(
+                                  "Spring Hack 2026",
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
+
+                          const SizedBox(width: 12),
 
                           Container(
                             padding: const EdgeInsets.all(14),
 
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
+                              color: AppColors.lightGray,
                               shape: BoxShape.circle,
                             ),
 
                             child: const Icon(
                               Icons.settings_rounded,
-                              color: Colors.white,
+                              color: Color(0xFF4B0082),
                             ),
                           ),
                         ],
@@ -216,14 +222,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         padding: const EdgeInsets.all(18),
 
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
+                          gradient: const LinearGradient(
                             colors: [
-                              Colors.white.withOpacity(0.18),
-                              Colors.white.withOpacity(0.08),
+                              AppColors.darkPurple,
+                              AppColors.accentPurple,
                             ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-
                           borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.darkPurple.withOpacity(0.16),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
 
                         child: Row(
@@ -232,16 +246,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               width: 56,
                               height: 56,
 
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.16),
                                 shape: BoxShape.circle,
                               ),
 
-                              child: const Center(
-                                child: Text(
-                                  "👑",
-                                  style: TextStyle(fontSize: 24),
-                                ),
+                              child: const Icon(
+                                Icons.admin_panel_settings_rounded,
+                                color: Colors.white,
+                                size: 26,
                               ),
                             ),
 
@@ -255,7 +268,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                     "Your Role",
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontWeight: FontWeight.w600,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
 
@@ -264,9 +277,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   Row(
                                     children: const [
                                       Icon(
-                                        Icons.admin_panel_settings,
+                                        Icons.verified_user_outlined,
                                         size: 14,
-                                        color: Color(0xFFE0E7FF),
+                                        color: Colors.white,
                                       ),
 
                                       SizedBox(width: 4),
@@ -274,7 +287,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                       Text(
                                         "Administrator",
                                         style: TextStyle(
-                                          color: Color(0xFFE0E7FF),
+                                          color: Colors.white,
                                           fontSize: 12,
                                         ),
                                       ),
@@ -300,7 +313,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 Text(
                                   "36h remaining",
                                   style: TextStyle(
-                                    color: Color(0xFFE0E7FF),
+                                    color: Colors.white,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -520,7 +533,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         style: const TextStyle(
           fontSize: 24,
           fontWeight: FontWeight.w700,
-          color: Color(0xFF111827),
+          color: AppColors.textPrimary,
         ),
       ),
     );
@@ -803,7 +816,7 @@ class PlaceholderScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: AppColors.backgroundLight,
 
       body: Center(
         child: Text(
