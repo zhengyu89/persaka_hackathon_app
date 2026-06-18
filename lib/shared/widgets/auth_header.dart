@@ -33,15 +33,16 @@ class AuthHeader extends StatelessWidget {
         child: Column(
           children: [
             if (showBack)
-              GestureDetector(
-                onTap: onBackTap ?? () => Navigator.pop(context),
-                child: const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Back to Login',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
+              Align(
+                alignment: Alignment.centerLeft,
+                child: GestureDetector(
+                  onTap: onBackTap ?? () => Navigator.pop(context),
+                  behavior: HitTestBehavior.opaque,
+                  child: const Padding(
+                    padding: EdgeInsets.only(top: 8, bottom: 8, right: 16),
+                    child: Text(
+                      'Back to Login',
+                      style: TextStyle(color: Colors.white70),
                     ),
                   ),
                 ),

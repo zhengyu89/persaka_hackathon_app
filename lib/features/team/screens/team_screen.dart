@@ -1054,6 +1054,7 @@ class _ActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Container(
         height: 166,
         padding: const EdgeInsets.all(18),

@@ -469,6 +469,9 @@ class _AdminAddHackathonScreenState extends State<AdminAddHackathonScreen> {
         payload['judgeAssignments'] = <Map<String, dynamic>>[];
         payload['createdAt'] = FieldValue.serverTimestamp();
         payload['createdBy'] = FirebaseAuth.instance.currentUser?.email;
+        payload['finalResultsRevealed'] = false;
+        payload['finalResultsPublishedAt'] = null;
+        payload['finalResultsPublishedBy'] = '';
         payload['judgingRules'] = {
           'judgesPerTeam': 2,
           'scoreScale': 10,
@@ -976,6 +979,7 @@ class _HackathonAdminCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => _openSettings(context),
+      behavior: HitTestBehavior.opaque,
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(16),
@@ -1009,8 +1013,9 @@ class _HackathonAdminCard extends StatelessWidget {
                     child: InkWell(
                       onTap: () => _showSettingsSheet(context),
                       borderRadius: BorderRadius.circular(14),
-                      child: const Padding(
-                        padding: EdgeInsets.all(10),
+                      child: const SizedBox(
+                        width: 44,
+                        height: 44,
                         child: Icon(
                           Icons.more_vert_rounded,
                           color: Color(0xFFFF0A1F),

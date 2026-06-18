@@ -33,7 +33,7 @@ class _JudgeDashboardState extends State<JudgeDashboard> {
   final List<Widget> _pages = [
     const JudgeAssignedHackathonsScreen(),
     const ScheduleScreen(),
-    const BoardScreen(isJudgeView: true),
+    const BoardScreen(audience: BoardAudience.judge),
     const TeamScreen.viewer(
       title: 'Assigned Teams',
       subtitle:
@@ -52,7 +52,11 @@ class _JudgeDashboardState extends State<JudgeDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _pages),
+      body: IndexedStack(
+        sizing: StackFit.expand,
+        index: _currentIndex,
+        children: _pages,
+      ),
       bottomNavigationBar: GlobalBottomNavBar(
         items: _navItems,
         currentIndex: _currentIndex,
