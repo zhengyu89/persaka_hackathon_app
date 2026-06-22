@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../core/constants/app_colors.dart';
 
 import '../../board/screens/board_screen.dart';
 import '../../profile/screens/profile_screen.dart';
@@ -50,13 +49,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor: const Color(0xFFF5F5F5),
 
-      body: IndexedStack(
-        sizing: StackFit.expand,
-        index: _currentIndex,
-        children: _pages,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: GlobalBottomNavBar(
         items: adminBottomNavItems,
         currentIndex: _currentIndex,
@@ -126,14 +121,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-        statusBarBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
       ),
     );
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor: const Color(0xFFF5F5F5),
 
       body: SingleChildScrollView(
         physics: const ClampingScrollPhysics(),
@@ -141,23 +136,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
         child: Column(
           children: [
-            /// HEADER
+            /// PURPLE HEADER
             Container(
               width: double.infinity,
 
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: const BorderRadius.only(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFFFF0A1F),
+                    Color(0xFF5A189A),
+                    Color(0xFF3D0075),
+                  ],
+                ),
+
+                borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(34),
                   bottomRight: Radius.circular(34),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 18,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
               ),
 
               child: SafeArea(
@@ -172,48 +169,41 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Admin Dashboard",
-                                  style: TextStyle(
-                                    color: AppColors.darkPurple,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: const [
+                              Text(
+                                "Admin Dashboard 👨‍💼",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
                                 ),
+                              ),
 
-                                const SizedBox(height: 6),
+                              SizedBox(height: 6),
 
-                                const Text(
-                                  "Spring Hack 2026",
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: AppColors.textPrimary,
-                                    fontSize: 32,
-                                    fontWeight: FontWeight.w800,
-                                  ),
+                              Text(
+                                "Spring Hack 2026",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w800,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-
-                          const SizedBox(width: 12),
 
                           Container(
                             padding: const EdgeInsets.all(14),
 
                             decoration: BoxDecoration(
-                              color: AppColors.lightGray,
+                              color: Colors.white.withValues(alpha: 0.15),
                               shape: BoxShape.circle,
                             ),
 
                             child: const Icon(
                               Icons.settings_rounded,
-                              color: Color(0xFF4B0082),
+                              color: Colors.white,
                             ),
                           ),
                         ],
@@ -226,22 +216,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         padding: const EdgeInsets.all(18),
 
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
+                          gradient: LinearGradient(
                             colors: [
-                              AppColors.darkPurple,
-                              AppColors.accentPurple,
+                              Colors.white.withValues(alpha: 0.18),
+                              Colors.white.withValues(alpha: 0.08),
                             ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
                           ),
+
                           borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.darkPurple.withOpacity(0.16),
-                              blurRadius: 16,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
                         ),
 
                         child: Row(
@@ -250,15 +232,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               width: 56,
                               height: 56,
 
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.16),
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
                                 shape: BoxShape.circle,
                               ),
 
-                              child: const Icon(
-                                Icons.admin_panel_settings_rounded,
-                                color: Colors.white,
-                                size: 26,
+                              child: const Center(
+                                child: Text(
+                                  "👑",
+                                  style: TextStyle(fontSize: 24),
+                                ),
                               ),
                             ),
 
@@ -272,7 +255,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                     "Your Role",
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontWeight: FontWeight.w700,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
 
@@ -281,7 +264,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                   Row(
                                     children: const [
                                       Icon(
-                                        Icons.verified_user_outlined,
+                                        Icons.admin_panel_settings,
                                         size: 14,
                                         color: Colors.white,
                                       ),
@@ -400,11 +383,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const AdminAddHackathonScreen(),
+                              builder:
+                                  (_) => const AdminAddHackathonScreen(),
                             ),
                           );
                         },
-                        behavior: HitTestBehavior.opaque,
                         child: const ActionCard(
                           title: "Add\nHackathon",
                           icon: Icons.rocket_launch_rounded,
@@ -421,7 +404,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                           );
                         },
-                        behavior: HitTestBehavior.opaque,
 
                         child: const ActionCard(
                           title: "Manage Judges",
@@ -441,7 +423,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                           );
                         },
-                        behavior: HitTestBehavior.opaque,
                         child: const ActionCard(
                           title: "View Submissions",
                           icon: Icons.description_outlined,
@@ -458,7 +439,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             ),
                           );
                         },
-                        behavior: HitTestBehavior.opaque,
                         child: const ActionCard(
                           title: "Schedule Event",
                           icon: Icons.calendar_month_rounded,
@@ -483,10 +463,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder:
-                              (_) => const TeamScreen.viewer(
-                                title: "Registered Teams",
-                              ),
+                          builder: (_) => const TeamScreen.viewer(
+                            title: "Registered Teams",
+                          ),
                         ),
                       );
                     },
@@ -541,7 +520,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         style: const TextStyle(
           fontSize: 24,
           fontWeight: FontWeight.w700,
-          color: AppColors.textPrimary,
+          color: Color(0xFF1A1A1A),
         ),
       ),
     );
@@ -575,7 +554,7 @@ class StatCard extends StatelessWidget {
 
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -604,7 +583,7 @@ class StatCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 34,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF111827),
+              color: Color(0xFF1A1A1A),
             ),
           ),
 
@@ -613,10 +592,13 @@ class StatCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: const TextStyle(color: Color(0xFF4B5563), fontSize: 13),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(color: Color(0xFF1A1A1A), fontSize: 13),
+                ),
               ),
+              const SizedBox(width: 4),
 
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -666,7 +648,7 @@ class ActionCard extends StatelessWidget {
 
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -681,7 +663,7 @@ class ActionCard extends StatelessWidget {
             height: 42,
 
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.18),
+              color: Colors.white.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(14),
             ),
 
@@ -723,9 +705,7 @@ class TaskCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
       child: Container(
-        constraints: const BoxConstraints(minHeight: 80),
         padding: const EdgeInsets.all(18),
 
         decoration: BoxDecoration(
@@ -734,7 +714,7 @@ class TaskCard extends StatelessWidget {
 
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 14,
               offset: const Offset(0, 4),
             ),
@@ -769,6 +749,7 @@ class TaskCard extends StatelessWidget {
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
+                      color: Color(0xFF1A1A1A),
                     ),
                   ),
 
@@ -777,7 +758,7 @@ class TaskCard extends StatelessWidget {
                   Text(
                     subtitle,
                     style: const TextStyle(
-                      color: Color(0xFF6B7280),
+                      color: Color(0xFF1A1A1A),
                       fontSize: 13,
                     ),
                   ),
@@ -787,7 +768,7 @@ class TaskCard extends StatelessWidget {
                   Text(
                     time,
                     style: const TextStyle(
-                      color: Color(0xFF9CA3AF),
+                      color: Color(0xFF1A1A1A),
                       fontSize: 12,
                     ),
                   ),
@@ -826,12 +807,20 @@ class PlaceholderScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor: const Color(0xFFF5F5F5),
 
       body: Center(
-        child: Text(
-          title,
-          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1A1A1A),
+            ),
+          ),
         ),
       ),
     );

@@ -69,7 +69,7 @@ class FinalResultsSummaryCard extends StatelessWidget {
         Text(
           _descriptionText(),
           style: const TextStyle(
-            color: Color(0xFF4B5563),
+            color: Color(0xFF1A1A1A),
             fontSize: 13,
             height: 1.45,
           ),
@@ -180,7 +180,7 @@ class _DetailLine extends StatelessWidget {
           child: Text(
             label,
             style: const TextStyle(
-              color: Color(0xFF6B7280),
+              color: Color(0xFF1A1A1A),
               fontSize: 12,
               fontWeight: FontWeight.w700,
             ),
@@ -190,7 +190,7 @@ class _DetailLine extends StatelessWidget {
           child: Text(
             value,
             style: const TextStyle(
-              color: Color(0xFF111827),
+              color: Color(0xFF1A1A1A),
               fontWeight: FontWeight.w600,
             ),
           ),

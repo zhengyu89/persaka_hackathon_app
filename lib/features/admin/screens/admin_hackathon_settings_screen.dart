@@ -498,6 +498,7 @@ class _SettingsFormState extends State<_SettingsForm> {
                   helper: 'Number of judges assigned to evaluate each team',
                   child: TextField(
                     controller: _judgesPerTeamController,
+                    style: const TextStyle(color: Color(0xFF1A1A1A)),
                     keyboardType: TextInputType.number,
                     decoration: _inputDecoration('2'),
                   ),
@@ -509,13 +510,17 @@ class _SettingsFormState extends State<_SettingsForm> {
                     children: [
                       DropdownButtonFormField<String>(
                         value: _scoreScaleOption,
+                        style: const TextStyle(color: Color(0xFF1A1A1A)),
                         decoration: _inputDecoration('Score scale'),
                         items:
                             const ['1-5', '1-10', '1-100', 'Custom']
                                 .map(
                                   (option) => DropdownMenuItem(
                                     value: option,
-                                    child: Text(option),
+                                    child: Text(
+                                      option,
+                                      style: const TextStyle(color: Color(0xFF1A1A1A)),
+                                    ),
                                   ),
                                 )
                                 .toList(),
@@ -538,6 +543,7 @@ class _SettingsFormState extends State<_SettingsForm> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: _scoreScaleController,
+                          style: const TextStyle(color: Color(0xFF1A1A1A)),
                           keyboardType: TextInputType.number,
                           decoration: _inputDecoration('Maximum score'),
                         ),
@@ -584,6 +590,7 @@ class _SettingsFormState extends State<_SettingsForm> {
                   helper: 'Minimum completed evaluations required',
                   child: TextField(
                     controller: _minimumJudgesController,
+                    style: const TextStyle(color: Color(0xFF1A1A1A)),
                     keyboardType: TextInputType.number,
                     decoration: _inputDecoration('1'),
                   ),
@@ -617,6 +624,7 @@ class _SettingsFormState extends State<_SettingsForm> {
                   helper: 'Deadline for judges to submit evaluations',
                   child: TextField(
                     controller: _judgeSubmissionDeadlineController,
+                    style: const TextStyle(color: Color(0xFF1A1A1A)),
                     readOnly: true,
                     onTap: _pickJudgeSubmissionDeadline,
                     decoration: _inputDecoration(
@@ -676,7 +684,7 @@ class _SettingsFormState extends State<_SettingsForm> {
                     children: [
                       const Text(
                         'No criteria yet.',
-                        style: TextStyle(color: Color(0xFF6B7280)),
+                        style: TextStyle(color: Color(0xFF1A1A1A)),
                       ),
                       const SizedBox(height: 14),
                       _WeightSummary(totalWeight: totalActiveWeight),
@@ -752,6 +760,7 @@ class _SettingsFormState extends State<_SettingsForm> {
                   helper: 'Deadline for participants to submit their projects',
                   child: TextField(
                     controller: _submissionDeadlineController,
+                    style: const TextStyle(color: Color(0xFF1A1A1A)),
                     readOnly: true,
                     onTap: _pickSubmissionDeadline,
                     decoration: _inputDecoration(
@@ -819,7 +828,8 @@ class _SettingsFormState extends State<_SettingsForm> {
                       const Text(
                         'Readiness could not be loaded right now. You can still republish once Firestore reconnects.',
                         style: TextStyle(
-                          color: Color(0xFF6B7280),
+                          color: Color(0xFF1A1A1A),
+                          fontStyle: FontStyle.italic,
                           fontSize: 12,
                           height: 1.4,
                         ),
@@ -911,7 +921,7 @@ class _SettingsCard extends StatelessWidget {
                 child: Text(
                   title,
                   style: const TextStyle(
-                    color: Color(0xFF111827),
+                    color: Color(0xFF1A1A1A),
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
@@ -942,7 +952,7 @@ class _SettingsSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SwitchListTile(
-      title: Text(title),
+      title: Text(title, style: const TextStyle(color: Color(0xFF1A1A1A))),
       value: value,
       onChanged: onChanged,
       contentPadding: EdgeInsets.zero,
@@ -975,7 +985,7 @@ class _SettingField extends StatelessWidget {
                 child: Text(
                   title,
                   style: const TextStyle(
-                    color: Color(0xFF111827),
+                    color: Color(0xFF1A1A1A),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -993,7 +1003,7 @@ class _SettingField extends StatelessWidget {
           Text(
             helper,
             style: const TextStyle(
-              color: Color(0xFF6B7280),
+              color: Color(0xFF1A1A1A),
               fontSize: 12,
               height: 1.35,
             ),
@@ -1034,7 +1044,7 @@ class _CriteriaTile extends StatelessWidget {
             Text(
               name,
               style: const TextStyle(
-                color: Color(0xFF111827),
+                color: Color(0xFF1A1A1A),
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -1042,24 +1052,24 @@ class _CriteriaTile extends StatelessWidget {
             const Text(
               'Description:',
               style: TextStyle(
-                color: Color(0xFF374151),
+                color: Color(0xFF1A1A1A),
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 2),
             Text(
               description.isEmpty ? '-' : description,
-              style: const TextStyle(color: Color(0xFF4B5563), height: 1.35),
+              style: const TextStyle(color: Color(0xFF1A1A1A), height: 1.35),
             ),
             const SizedBox(height: 10),
             Text(
               'Weight: ${_formatNumber(weight)}%',
-              style: const TextStyle(color: Color(0xFF111827)),
+              style: const TextStyle(color: Color(0xFF1A1A1A)),
             ),
             const SizedBox(height: 4),
             Text(
               'Max Score: ${_formatNumber(maxScore)}',
-              style: const TextStyle(color: Color(0xFF111827)),
+              style: const TextStyle(color: Color(0xFF1A1A1A)),
             ),
             const SizedBox(height: 4),
             Text(
@@ -1111,7 +1121,7 @@ class _WeightSummary extends StatelessWidget {
           Text(
             'Total Weight: ${_formatNumber(totalWeight)}%',
             style: const TextStyle(
-              color: Color(0xFF111827),
+              color: Color(0xFF1A1A1A),
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -1290,7 +1300,7 @@ class _CriterionEditorSheetState extends State<_CriterionEditorSheet> {
               Text(
                 widget.criterion == null ? 'Add Criterion' : 'Edit Criterion',
                 style: const TextStyle(
-                  color: Color(0xFF111827),
+                  color: Color(0xFF1A1A1A),
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                 ),
@@ -1298,12 +1308,14 @@ class _CriterionEditorSheetState extends State<_CriterionEditorSheet> {
               const SizedBox(height: 16),
               TextField(
                 controller: _nameController,
+                style: const TextStyle(color: Color(0xFF1A1A1A)),
                 textInputAction: TextInputAction.next,
                 decoration: _inputDecoration('Criterion Name'),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _descriptionController,
+                style: const TextStyle(color: Color(0xFF1A1A1A)),
                 minLines: 2,
                 maxLines: 3,
                 decoration: _inputDecoration('Description'),
@@ -1311,6 +1323,7 @@ class _CriterionEditorSheetState extends State<_CriterionEditorSheet> {
               const SizedBox(height: 12),
               TextField(
                 controller: _weightController,
+                style: const TextStyle(color: Color(0xFF1A1A1A)),
                 keyboardType: TextInputType.number,
                 decoration: _inputDecoration(
                   'Weight Percentage (%)',
@@ -1319,6 +1332,7 @@ class _CriterionEditorSheetState extends State<_CriterionEditorSheet> {
               const SizedBox(height: 12),
               TextField(
                 controller: _maxScoreController,
+                style: const TextStyle(color: Color(0xFF1A1A1A)),
                 keyboardType: TextInputType.number,
                 decoration: _inputDecoration(
                   'Maximum Judge Score',
@@ -1332,7 +1346,7 @@ class _CriterionEditorSheetState extends State<_CriterionEditorSheet> {
                       _active = value;
                     }),
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Active Criterion'),
+                title: const Text('Active Criterion', style: TextStyle(color: Color(0xFF1A1A1A))),
                 activeColor: const Color(0xFFFF0A1F),
               ),
               Container(
@@ -1348,7 +1362,7 @@ class _CriterionEditorSheetState extends State<_CriterionEditorSheet> {
                     Text(
                       'Current Active Weight: ${_formatNumber(_currentActiveWeight)}%',
                       style: const TextStyle(
-                        color: Color(0xFF111827),
+                        color: Color(0xFF1A1A1A),
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -1415,7 +1429,7 @@ class _ParticipatingTeamsSection extends StatelessWidget {
           if (teams.isEmpty) {
             return const Text(
               'No participating teams yet.',
-              style: TextStyle(color: Color(0xFF6B7280)),
+              style: TextStyle(color: Color(0xFF1A1A1A)),
             );
           }
           return Column(
@@ -1470,7 +1484,7 @@ class _AssignedJudgesSection extends StatelessWidget {
           if (judges.isEmpty) {
             return const Text(
               'No judges assigned yet.',
-              style: TextStyle(color: Color(0xFF6B7280)),
+              style: TextStyle(color: Color(0xFF1A1A1A)),
             );
           }
           return Column(
@@ -1518,7 +1532,7 @@ class AdminHackathonTeamDetailScreen extends StatelessWidget {
       backgroundColor: const Color(0xFFF8F8FB),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        foregroundColor: const Color(0xFF111827),
+        foregroundColor: const Color(0xFF1A1A1A),
         elevation: 0,
         title: const Text('Team Details'),
       ),
@@ -1562,7 +1576,7 @@ class AdminHackathonTeamDetailScreen extends StatelessWidget {
                       const Text(
                         'Members',
                         style: TextStyle(
-                          color: Color(0xFF111827),
+                          color: Color(0xFF1A1A1A),
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1832,7 +1846,7 @@ class _MiniChip extends StatelessWidget {
       child: Text(
         label,
         style: const TextStyle(
-          color: Color(0xFFFF0A1F),
+          color: Color(0xFF1A1A1A),
           fontWeight: FontWeight.w700,
           fontSize: 12,
         ),
@@ -2103,7 +2117,7 @@ class _SettingsStateCard extends StatelessWidget {
               Text(
                 title,
                 style: const TextStyle(
-                  color: Color(0xFF111827),
+                  color: Color(0xFF1A1A1A),
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
@@ -2113,7 +2127,7 @@ class _SettingsStateCard extends StatelessWidget {
                 subtitle,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: Color(0xFF6B7280),
+                  color: Color(0xFF1A1A1A),
                   fontSize: 13,
                   height: 1.45,
                 ),

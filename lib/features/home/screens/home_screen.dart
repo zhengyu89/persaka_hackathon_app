@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/participant_ui.dart';
 import '../../submit/models/submission_models.dart';
 
@@ -33,7 +34,7 @@ class _HeaderBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.16),
+        color: Colors.white.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(18),
       ),
       child: const Column(
@@ -123,10 +124,10 @@ class _CountdownMetricTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.persakaRed.withOpacity(0.18)),
+          border: Border.all(color: AppColors.persakaRed.withValues(alpha: 0.18)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.12),
+              color: Colors.black.withValues(alpha: 0.12),
               blurRadius: 14,
               offset: const Offset(0, 6),
             ),
@@ -181,7 +182,7 @@ class _LightMetricTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.94),
+          color: Colors.white.withValues(alpha: 0.94),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.white),
         ),
@@ -270,7 +271,7 @@ class _ActionTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
@@ -612,7 +613,7 @@ class _LeaderboardPreviewCard extends StatelessWidget {
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: ParticipantPalette.primary.withOpacity(0.1),
+              color: ParticipantPalette.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             alignment: Alignment.center,

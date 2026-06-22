@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import '../../../shared/widgets/hackathon_cover.dart';
 import '../../../shared/widgets/participant_ui.dart';
-import '../../../core/constants/app_colors.dart';
 import 'create_team_screen.dart';
 import 'join_team_screen.dart';
 
@@ -466,8 +465,9 @@ class _TeamCard extends StatelessWidget {
                               ),
                             _InfoTag(
                               label: '${members.length} Members',
-                              backgroundColor: AppColors.lightGray,
-                              textColor: AppColors.darkPurple,
+                              backgroundColor: const Color(0xFFEDE7F6),
+                              textColor: const Color(0xFF4B0082),
+                              borderColor: const Color(0xFF4B0082),
                             ),
                             _InfoTag(
                               label: allowTeamActions
@@ -1159,11 +1159,13 @@ class _InfoTag extends StatelessWidget {
     required this.label,
     required this.backgroundColor,
     required this.textColor,
+    this.borderColor,
   });
 
   final String label;
   final Color backgroundColor;
   final Color textColor;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -1175,6 +1177,9 @@ class _InfoTag extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(999),
+        border: borderColor != null
+            ? Border.all(color: borderColor!, width: 1)
+            : null,
       ),
       child: Text(
         label,

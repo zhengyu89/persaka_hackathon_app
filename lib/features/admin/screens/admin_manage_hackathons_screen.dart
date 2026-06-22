@@ -6,7 +6,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../../core/constants/app_colors.dart';
 import '../../../shared/widgets/hackathon_cover.dart';
 import '../../submit/models/submission_models.dart';
 import '../../submit/utils/submission_validators.dart';
@@ -85,7 +84,7 @@ class _AdminManageHackathonsScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor: const Color(0xFFF5F5F5),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(
@@ -93,7 +92,7 @@ class _AdminManageHackathonsScreenState
             MaterialPageRoute(builder: (_) => const AdminAddHackathonScreen()),
           );
         },
-        backgroundColor: AppColors.persakaRed,
+        backgroundColor: const Color(0xFFFF0A1F),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
         label: const Text('Add Hackathon'),
@@ -117,18 +116,19 @@ class _AdminManageHackathonsScreenState
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: const BorderRadius.vertical(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFFFF0A1F),
+                        Color(0xFF5A189A),
+                        Color(0xFF3D0075),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.vertical(
                       bottom: Radius.circular(34),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
-                        blurRadius: 18,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,13 +154,13 @@ class _AdminManageHackathonsScreenState
                               vertical: 8,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.lightGray,
+                              color: Colors.white.withOpacity(0.16),
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
                               '${hackathons.length} Live',
                               style: const TextStyle(
-                                color: Color(0xFF111827),
+                                color: Colors.white,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -168,19 +168,19 @@ class _AdminManageHackathonsScreenState
                         ],
                       ),
                       const SizedBox(height: 22),
-                      Text(
+                      const Text(
                         'Manage Hackathons',
                         style: TextStyle(
-                          color: AppColors.textPrimary,
+                          color: Colors.white,
                           fontSize: 28,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(
+                      const Text(
                         'Create hackathons, configure participant Google Forms, and keep organiser review links ready for judges.',
                         style: TextStyle(
-                          color: AppColors.darkPurple.withOpacity(0.9),
+                          color: Color(0xFFEAE7FF),
                           fontSize: 14,
                           height: 1.45,
                         ),
@@ -267,7 +267,7 @@ class _HackathonSearchHeaderDelegate extends SliverPersistentHeaderDelegate {
   ) {
     return SizedBox.expand(
       child: Container(
-        color: const Color(0xFFF8F8FB),
+        color: const Color(0xFFF5F5F5),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         alignment: Alignment.center,
         child: child,
@@ -300,6 +300,7 @@ class _HackathonSearchBar extends StatelessWidget {
         return TextField(
           controller: controller,
           onChanged: onChanged,
+          style: const TextStyle(color: Color(0xFF1A1A1A)),
           decoration: InputDecoration(
             hintText: 'Search by name, date, or status',
             prefixIcon: const Icon(Icons.search_rounded),
@@ -555,6 +556,7 @@ class _AdminAddHackathonScreenState extends State<AdminAddHackathonScreen> {
                     const SizedBox(height: 10),
                     TextFormField(
                       controller: _titleController,
+                      style: const TextStyle(color: Color(0xFF1A1A1A)),
                       validator: (value) {
                         if ((value ?? '').trim().isEmpty) {
                           return 'Please enter the hackathon name.';
@@ -568,6 +570,7 @@ class _AdminAddHackathonScreenState extends State<AdminAddHackathonScreen> {
                     const SizedBox(height: 10),
                     TextFormField(
                       controller: _descriptionController,
+                      style: const TextStyle(color: Color(0xFF1A1A1A)),
                       maxLines: 5,
                       validator: (value) {
                         if ((value ?? '').trim().isEmpty) {
@@ -584,6 +587,7 @@ class _AdminAddHackathonScreenState extends State<AdminAddHackathonScreen> {
                     const SizedBox(height: 10),
                     TextFormField(
                       controller: _participantFormUrlController,
+                      style: const TextStyle(color: Color(0xFF1A1A1A)),
                       validator:
                           (value) =>
                               SubmissionValidators.validateRequiredHttpsUrl(
@@ -599,6 +603,7 @@ class _AdminAddHackathonScreenState extends State<AdminAddHackathonScreen> {
                     const SizedBox(height: 10),
                     TextFormField(
                       controller: _reviewUrlController,
+                      style: const TextStyle(color: Color(0xFF1A1A1A)),
                       validator:
                           (value) =>
                               SubmissionValidators.validateRequiredHttpsUrl(
@@ -627,7 +632,10 @@ class _AdminAddHackathonScreenState extends State<AdminAddHackathonScreen> {
                               .map(
                                 (status) => DropdownMenuItem(
                                   value: status,
-                                  child: Text(status),
+                                  child: Text(
+                                    status,
+                                    style: const TextStyle(color: Color(0xFF1A1A1A)),
+                                  ),
                                 ),
                               )
                               .toList(),
@@ -646,6 +654,7 @@ class _AdminAddHackathonScreenState extends State<AdminAddHackathonScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _startDateController,
+                            style: const TextStyle(color: Color(0xFF1A1A1A)),
                             readOnly: true,
                             decoration: _inputDecoration('Start date'),
                             onTap:
@@ -666,6 +675,7 @@ class _AdminAddHackathonScreenState extends State<AdminAddHackathonScreen> {
                         Expanded(
                           child: TextFormField(
                             controller: _endDateController,
+                            style: const TextStyle(color: Color(0xFF1A1A1A)),
                             readOnly: true,
                             decoration: _inputDecoration('End date'),
                             onTap:
@@ -1046,7 +1056,7 @@ class _HackathonAdminCard extends StatelessWidget {
                       Text(
                         hackathon.title,
                         style: const TextStyle(
-                          color: Color(0xFF111827),
+                          color: Color(0xFF1A1A1A),
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
                         ),
@@ -1057,7 +1067,7 @@ class _HackathonAdminCard extends StatelessWidget {
                             ? 'No description'
                             : hackathon.description,
                         style: const TextStyle(
-                          color: Color(0xFF6B7280),
+                          color: Color(0xFF1A1A1A),
                           fontSize: 13,
                           height: 1.45,
                         ),
@@ -1133,16 +1143,20 @@ class _HackathonAdminCard extends StatelessWidget {
                   child: Text(
                     _dateLabel(),
                     style: const TextStyle(
-                      color: Color(0xFF6B7280),
+                      color: Color(0xFF1A1A1A),
                       fontSize: 12,
                     ),
                   ),
                 ),
-                Text(
-                  'Organizer ${_organizerName(hackathon.createdBy)}',
-                  style: const TextStyle(
-                    color: Color(0xFF9CA3AF),
-                    fontSize: 12,
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    'Organizer ${_organizerName(hackathon.createdBy)}',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF1A1A1A),
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ],
@@ -1208,7 +1222,7 @@ class _SettingsSheetItem extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
-    this.color = const Color(0xFF111827),
+    this.color = const Color(0xFF1A1A1A),
   });
 
   final IconData icon;
@@ -1287,7 +1301,7 @@ class _AdminStateCard extends StatelessWidget {
           Text(
             title,
             style: const TextStyle(
-              color: Color(0xFF111827),
+              color: Color(0xFF1A1A1A),
               fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
@@ -1297,7 +1311,7 @@ class _AdminStateCard extends StatelessWidget {
             subtitle,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              color: Color(0xFF6B7280),
+              color: Color(0xFF1A1A1A),
               fontSize: 13,
               height: 1.45,
             ),
@@ -1330,7 +1344,7 @@ class _AdminFormCard extends StatelessWidget {
           Text(
             title,
             style: const TextStyle(
-              color: Color(0xFF111827),
+              color: Color(0xFF1A1A1A),
               fontSize: 16,
               fontWeight: FontWeight.w700,
             ),
@@ -1353,7 +1367,7 @@ class _AdminInputLabel extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(
-        color: Color(0xFF111827),
+        color: Color(0xFF1A1A1A),
         fontWeight: FontWeight.w700,
       ),
     );
