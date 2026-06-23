@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../shared/widgets/participant_ui.dart';
 import '../../submit/models/submission_models.dart';
-
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
