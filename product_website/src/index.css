@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --persaka-red: #ff001f;
+    --persaka-purple: #4b0082;
+    --persaka-accent: #6a0dad;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* Offset anchored sections so they are not hidden under the sticky navbar. */
+    scroll-padding-top: 6rem;
+  }
+
+  body {
+    @apply bg-canvas font-body text-ink antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading;
+    text-wrap: balance;
+  }
+
+  /* Visible, consistent focus ring for keyboard users. */
+  :focus-visible {
+    outline: 2px solid var(--persaka-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-7xl px-5 sm:px-6 lg:px-8;
+  }
+
+  .section-pad {
+    @apply py-20 sm:py-24 lg:py-28;
+  }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full border border-persaka-purple/15 bg-persaka-purple/5 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-persaka-purple;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl bg-persaka-red px-6 py-3 text-sm font-semibold text-white shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#e00018] focus-visible:outline-offset-4 sm:text-base;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl border border-persaka-purple/25 bg-white px-6 py-3 text-sm font-semibold text-persaka-purple shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-persaka-purple/50 sm:text-base;
+  }
+
+  .card-base {
+    @apply rounded-2xl border border-black/[0.06] bg-white shadow-card;
+  }
+}
+
+/* Honour reduced-motion across the whole site. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
